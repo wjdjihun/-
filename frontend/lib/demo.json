@@ -3832,9 +3832,7 @@
       "summary": "한파로 수확 일정이 늦어지면 단기 공급이 줄어 배추 가격에 상승 압력이 생길 수 있습니다.",
       "publisher": "물가레이더 데모",
       "published_at": "2026-11-14T09:00:00+09:00",
-      "product_ids": [
-        "cabbage"
-      ],
+      "product_ids": ["cabbage"],
       "event": "공급량 감소",
       "direction": "up",
       "strength": "높음",
@@ -3849,9 +3847,7 @@
       "summary": "저장 물량이 시장에 풀리면서 공급 여건이 개선되는 상황을 가정한 예시입니다.",
       "publisher": "물가레이더 데모",
       "published_at": "2026-11-14T10:00:00+09:00",
-      "product_ids": [
-        "onion"
-      ],
+      "product_ids": ["onion"],
       "event": "공급량 증가",
       "direction": "down",
       "strength": "중간",
@@ -3866,9 +3862,7 @@
       "summary": "사료 가격 상승은 생산비에 영향을 미치며, 소매가격에는 시차를 두고 반영될 수 있습니다.",
       "publisher": "물가레이더 데모",
       "published_at": "2026-11-14T11:00:00+09:00",
-      "product_ids": [
-        "eggs"
-      ],
+      "product_ids": ["eggs"],
       "event": "원자재 가격 상승",
       "direction": "up",
       "strength": "중간",
@@ -3883,9 +3877,7 @@
       "summary": "작황 개선과 출하 증가가 단기 가격 하락 요인으로 작용하는 상황을 가정했습니다.",
       "publisher": "물가레이더 데모",
       "published_at": "2026-11-13T12:00:00+09:00",
-      "product_ids": [
-        "potato"
-      ],
+      "product_ids": ["potato"],
       "event": "공급량 증가",
       "direction": "down",
       "strength": "중간",
@@ -3900,9 +3892,7 @@
       "summary": "선별 비용 상승과 상품과 비중 감소가 소매가격을 끌어올릴 수 있습니다.",
       "publisher": "물가레이더 데모",
       "published_at": "2026-11-13T13:00:00+09:00",
-      "product_ids": [
-        "apple"
-      ],
+      "product_ids": ["apple"],
       "event": "기후 및 자연재해",
       "direction": "up",
       "strength": "중간",
@@ -3917,9 +3907,7 @@
       "summary": "어획량 회복으로 시장 공급이 늘어나는 경우 가격 부담이 완화될 수 있습니다.",
       "publisher": "물가레이더 데모",
       "published_at": "2026-11-13T09:00:00+09:00",
-      "product_ids": [
-        "mackerel"
-      ],
+      "product_ids": ["mackerel"],
       "event": "공급량 증가",
       "direction": "down",
       "strength": "낮음",
@@ -3934,9 +3922,7 @@
       "summary": "연말 모임과 외식 수요 확대가 축산물 가격 상승 요인이 되는 예시입니다.",
       "publisher": "물가레이더 데모",
       "published_at": "2026-11-12T10:00:00+09:00",
-      "product_ids": [
-        "pork"
-      ],
+      "product_ids": ["pork"],
       "event": "수요 증가",
       "direction": "up",
       "strength": "중간",
@@ -3951,9 +3937,7 @@
       "summary": "낮은 기온이 생육과 수확 작업을 늦추면 단기 공급에 영향을 줄 수 있습니다.",
       "publisher": "물가레이더 데모",
       "published_at": "2026-11-12T11:00:00+09:00",
-      "product_ids": [
-        "scallion"
-      ],
+      "product_ids": ["scallion"],
       "event": "기후 및 자연재해",
       "direction": "up",
       "strength": "높음",

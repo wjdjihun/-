@@ -4,6 +4,6 @@
   "scripts": {
     "dev": "node --env-file-if-exists=.env frontend/node_modules/next/dist/bin/next dev frontend --hostname 0.0.0.0",
     "build": "node --env-file-if-exists=.env frontend/node_modules/next/dist/bin/next build frontend && node scripts/package-static.mjs",
-    "typecheck": "npm --prefix frontend run typecheck"
+    "typecheck": "node --env-file-if-exists=.env frontend/node_modules/next/dist/bin/next typegen frontend && npm --prefix frontend run typecheck"
   }
 }
