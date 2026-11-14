@@ -6,6 +6,7 @@ from app.services.forecast import basket_forecast
 
 
 def create_router(service, repository):
+    # TODO[APP-03] [D] REST 경로는 구현됨. 실제 데이터·모델을 연결한 뒤 화면 응답과 예측·오류 흐름을 통합 검증하세요.
     router = APIRouter(prefix="/api")
 
     def dataset():

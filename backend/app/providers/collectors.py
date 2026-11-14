@@ -35,6 +35,8 @@ def fetch_json(url, params=None, headers=None):
 
 
 class KamisClient:
+    # TODO[API-01] [A] 클라이언트는 작성됨. 실제 발급 키로 인증·응답·할당량을 검증하세요.
+    # TODO[DATA-01] [A] 품목/품종/등급/지역/단위를 확인해 docs/product_mapping.template.csv를 완성하세요.
     DOCS = "https://www.kamis.or.kr/customer/reference/openapi_list.do?action=detail&boardno=1"
     ENDPOINT = "https://www.kamis.or.kr/service/price/xml.do"
 
@@ -62,6 +64,7 @@ class KamisClient:
 
 
 class KosisClient:
+    # TODO[API-03] [A] 공식 콘솔의 통계표·기관·분류·항목 코드를 입력하고 실제 응답을 검증하세요.
     DOCS = "https://sso.kosis.kr/openapi/devGuide/devGuide_0201List.do"
     ENDPOINT = "https://kosis.kr/openapi/Param/statisticsParameterData.do"
 
@@ -118,6 +121,7 @@ class ConsoleURLClient:
         if parsed.scheme != "https" or parsed.username or parsed.password:
             raise ProviderError("공식 콘솔에서 생성한 HTTPS URL을 사용하세요.")
         if self.source == "ecos":
+            # TODO[API-02] [A] 공식 콘솔 URL에서 키를 {API_KEY}로 치환해 설정하세요. 고정 조회 코드는 미확정입니다.
             if (
                 parsed.hostname != "ecos.bok.or.kr"
                 or not parsed.path.startswith("/api/")
@@ -128,9 +132,12 @@ class ConsoleURLClient:
                 )
             return fetch_json(url.replace("{API_KEY}", self.key))
         if self.source == "weather":
+            # TODO[API-04] [A] 승인된 기상청 서비스 URL·관측소를 설정하고 응답을 정규화하세요.
+            # 기상 피처는 현재 가격 모델 입력에 포함되지 않으므로 추가 시 C 담당과 계약을 맞추세요.
             if parsed.hostname != "apis.data.go.kr":
                 raise ProviderError("공공데이터포털의 기상청 공식 URL을 사용하세요.")
             return fetch_json(url, {**config.get("params", {}), "serviceKey": self.key})
+        # TODO[API-05] [B] 뉴스 공급자·이용 권한·문서의 인증 방식·원문 필드 매핑을 확정하세요.
         # Choose a licensed news provider and enter its documented auth contract explicitly.
         if not config.get("license_confirmed"):
             raise ProviderError(

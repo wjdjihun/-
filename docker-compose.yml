@@ -1,3 +1,5 @@
+# TODO[OPS-01] [D] 로컬 Docker 실행 구성입니다. Python 서버의 운영 배포·HTTPS·CORS는 별도 설정하세요.
+# Sites 게시본은 정적 프론트엔드 데모이며 FastAPI/SQLite/XGBoost 프로세스를 호스팅하지 않습니다.
 services:
   backend:
     build: ./backend

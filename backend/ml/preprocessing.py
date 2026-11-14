@@ -2,6 +2,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+# TODO[AI-03] [C] 현재 모델 A에도 뉴스 열이 필수입니다. 뉴스 없는 A를 학습하려면 모델별 필수 열 검사를 분리하세요.
+# 뉴스 수집 실패를 '실제 기사 0건'으로 간주해 0을 채우지 마세요.
 REQUIRED = [
     "date",
     "product_id",

@@ -1,0 +1,7 @@
+{
+  "url": "https://YOUR_LICENSED_NEWS_PROVIDER/REPLACE_WITH_DOCUMENTED_PATH",
+  "params": {},
+  "license_confirmed": false,
+  "auth_header": "REPLACE_WITH_DOCUMENTED_HEADER",
+  "auth_prefix": ""
+}

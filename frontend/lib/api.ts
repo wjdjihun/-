@@ -1,6 +1,8 @@
 import raw from "./demo.json";
 import type { BasketItem, Dataset } from "@/types";
 export const demo = raw as Dataset;
+// TODO[APP-01] [D] 루트 .env의 NEXT_PUBLIC_API_URL을 FastAPI 주소로 설정하고 프론트엔드를 재빌드하세요.
+// API 주소만 공개 설정에 넣습니다. 외부 API 키는 프로젝트 루트 .env에 보관하고 서버에서만 읽습니다.
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(
   /\/$/,
   "",
@@ -38,6 +40,7 @@ export async function loadData(): Promise<Dataset> {
     history: Object.fromEntries(observations),
     mode: health.mode,
     reference_date: health.reference_date,
+    // TODO[APP-02] [A/D] 실제 모드의 상단 경제지표는 아직 미연결입니다. 공식 지표 응답과 화면을 연결하세요.
     indicators: health.mode === "demo" ? demo.indicators : [],
   };
 }

@@ -32,6 +32,8 @@ def engineer_features(df: pd.DataFrame, include_target=True):
         g["month_sin"] = np.sin(2 * np.pi * g.index.month / 12)
         g["month_cos"] = np.cos(2 * np.pi * g.index.month / 12)
         if include_target:
+            # TODO[AI-02] [C] 현재 +27~+33일 7개 관측값이 모두 있어야 목표값을 만듭니다.
+            # 실제 휴일/결측 자료에서는 유효 목표가 없어질 수 있습니다. 최소 관측 수 규칙과 검증 테스트를 확정하세요.
             # A 7-day mean centered on day +30; the entire label interval must precede the next split.
             future = [
                 original.reindex(g.index + pd.Timedelta(days=d)).to_numpy()
@@ -49,6 +51,7 @@ def engineer_features(df: pd.DataFrame, include_target=True):
         frame["product_" + str(product_id)] = (
             frame["product_id"] == product_id
         ).astype(float)
+    # TODO[AI-03] [C] 전처리와 함께 이 검사도 모델별로 분리해야 뉴스 없는 모델 A를 학습할 수 있습니다.
     required = (
         PRICE_FEATURES
         + ECON_FEATURES

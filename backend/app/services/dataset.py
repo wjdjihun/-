@@ -39,6 +39,8 @@ class DatasetService:
     def _load(self):
         data = deepcopy(self.provider.load())
         if data["mode"] == "live":
+            # TODO[AI-05] [C/D] 현재 실제 데이터 모드에는 실제 학습 모델 B가 필요합니다.
+            # 가격 조회를 미학습 상태에서도 제공하거나 모델 A를 선택하려면 이 연결과 캐시 경로도 함께 수정하세요.
             from ml.predict import PredictionEngine
 
             engine = PredictionEngine(

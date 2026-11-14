@@ -8,6 +8,7 @@ class BasketRepository:
     """A local single-user SQLite repository. Replace with user-keyed storage before sharing."""
 
     def __init__(self, path: Path):
+        # TODO[AUTH-01] [D/후순위] 현재 id=1인 단일 사용자 저장소입니다. 공유 운영 시 인증·사용자별 키가 필요합니다.
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(path) as conn:

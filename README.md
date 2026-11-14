@@ -1,5 +1,9 @@
 # PriceRadar AI · 물가레이더
 
+팀원에게 소스를 전달받았다면 [START_HERE.md](START_HERE.md)부터 읽으세요.
+API 키 설정·필요한 개발 위치는 [연동 안내](docs/INTEGRATION_GUIDE.md)와 [코드 표시 지도](docs/CODE_MAP.md)에 정리했습니다.
+편집기에서 `TODO[`를 검색하면 API·AI·배포의 남은 연결 작업을 찾을 수 있습니다.
+
 **다음 달, 똑같은 장바구니에 얼마가 필요할까요?**
 
 한국어 생활비 예측 웹앱입니다. 소비량은 고정하고 품목 가격의 변화만 반영합니다. Next.js 프론트엔드와 Python FastAPI 백엔드를 분리했습니다.

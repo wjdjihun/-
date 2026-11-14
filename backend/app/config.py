@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Settings(BaseSettings):
+    # TODO[ENV-01] [A/D] 루트 .env의 서버 전용 키를 읽습니다. 키를 소스에 직접 적지 마세요.
     model_config = SettingsConfigDict(env_file=ROOT.parent / ".env", extra="ignore")
     data_provider: str = "demo"
     dataset_path: Path = ROOT / "data/raw/live_dataset.json"

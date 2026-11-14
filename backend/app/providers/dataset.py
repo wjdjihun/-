@@ -6,6 +6,7 @@ from app.providers.base import ProviderError
 
 
 class DemoProvider:
+    # TODO[DATA-03] [A/D] 제공 JSON은 합성 가격·가상 뉴스입니다. 실제 데이터 검증이 끝날 때까지 데모 표시를 유지하세요.
     def load(self):
         return json.loads((ROOT / "data/demo/dataset.json").read_text())
 
@@ -17,6 +18,8 @@ class FileDataProvider:
         self.path = path
 
     def load(self):
+        # TODO[DATA-03] [A/D] 정규화한 실제 JSON을 연결하세요. 이 클래스는 CSV를 자동 변환하지 않습니다.
+        # 데모 JSON의 mode만 live로 바꾸는 방식은 실제 데이터 연결이 아닙니다.
         try:
             data = json.loads(self.path.read_text())
         except (OSError, ValueError) as exc:

@@ -1,0 +1,4 @@
+product_id,name,source,price_type,source_item_code,source_kind_code,source_grade_code,source_region_code,source_unit,normalized_unit,grade,region,spec,verified_at,status
+cabbage,배추,KAMIS,소매,,,,,,,,,,,미확인
+onion,양파,KAMIS,소매,,,,,,,,,,,미확인
+potato,감자,KAMIS,소매,,,,,,,,,,,미확인

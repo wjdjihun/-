@@ -1,0 +1,9 @@
+{
+  "orgId": "REPLACE_WITH_OFFICIAL_ORG_ID",
+  "tblId": "REPLACE_WITH_OFFICIAL_TABLE_ID",
+  "objL1": "REPLACE_WITH_OFFICIAL_CLASSIFICATION",
+  "itmId": "REPLACE_WITH_OFFICIAL_ITEM_ID",
+  "prdSe": "M",
+  "startPrdDe": "YYYYMM",
+  "endPrdDe": "YYYYMM"
+}

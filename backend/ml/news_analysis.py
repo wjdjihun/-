@@ -72,6 +72,8 @@ def timestamp(value: str):
 
 
 def analyze_news(article: dict):
+    # TODO[AI-01] [B] 현재는 키워드 규칙입니다. NLP/LLM 구조화 분석과 수작업 정답셋 평가를 연결하세요.
+    # 품목별 영향 방향이 다를 수 있으므로 기사 전체에 하나의 방향만 부여하는 한계도 개선하세요.
     text = article["title"] + " " + article.get("summary", article.get("body", ""))
     products = article.get("product_ids") or [
         id for id, name in PRODUCTS.items() if name in text
@@ -140,6 +142,7 @@ def aggregate_news(articles: list[dict], as_of: str, product_ids=None):
         if start < timestamp(a["published_at"]) <= cutoff
         and timestamp(a.get("available_at", a["published_at"])) <= cutoff
     ]
+    # TODO[AI-01] [B] LLM 분석 결과를 저장했다면 여기서 규칙으로 다시 덮어쓰지 않도록 캐시/분석 경로도 수정하세요.
     unique = deduplicate([analyze_news(a) for a in allowed])
     ids = product_ids or list(PRODUCTS)
     result = {

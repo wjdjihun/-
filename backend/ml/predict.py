@@ -8,6 +8,7 @@ from ml.feature_engineering import engineer_features
 
 class PredictionEngine:
     def __init__(self, directory: Path, prices: Path):
+        # TODO[AI-05] [C/D] 현재 모델 B 파일을 고정 로드합니다. 모델 A 우선 연결 시 명시적인 모델 선택을 추가하세요.
         # Load only trusted, locally generated artifacts. Never unpickle visitor uploads.
         self.bundle = joblib.load(directory / "model_b.joblib")
         self.metrics = json.loads((directory / "metrics.json").read_text())

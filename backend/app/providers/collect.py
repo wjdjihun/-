@@ -7,6 +7,7 @@ from app.providers.collectors import KamisClient, KosisClient, ConsoleURLClient
 
 
 def main():
+    # TODO[OPS-02] [A/D] 현재 수동 수집 CLI입니다. 반복 실행 스케줄·재시도·수집 이력 저장은 후속 작업입니다.
     parser = argparse.ArgumentParser(
         description="공식 API 원본 JSON 수집. 품목 정규화는 별도 단계입니다."
     )
@@ -31,6 +32,8 @@ def main():
             "news": settings.news_api_key,
         }[args.source]
         result = ConsoleURLClient(args.source, key).collect(config)
+    # TODO[DATA-02] [A/C] 아래는 원본 응답 저장입니다. 가격/경제/뉴스 정규화와 날짜별 결합은 아직 필요합니다.
+    # 수집 결과를 곧바로 학습 CSV나 live_dataset.json으로 사용하지 마세요.
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(

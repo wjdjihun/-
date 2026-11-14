@@ -16,6 +16,8 @@ from ml.evaluate import evaluate
 
 
 def train(path: Path, output: Path, allow_demo=False):
+    # TODO[AI-04] [C] 학습 파이프라인은 구현됨. 실제 정규화 CSV로 학습·평가하고 산출물과 재현 설정을 전달하세요.
+    # data/demo/training.csv 결과는 합성 자료의 실행 검증이며 실제 모델 성능이 아닙니다.
     source = load_prices(path, allow_demo=allow_demo)
     frame = engineer_features(source)
     training, validation, test = time_split(frame)
@@ -72,6 +74,7 @@ def train(path: Path, output: Path, allow_demo=False):
         )
         result["models"][name] = evaluate(test["target"], model.predict(test[features]))
         # Fit interval radii on validation only; test labels never tune the model or interval.
+        # TODO[AI-06] [C] 실제 자료로 예측 범위의 테스트 포함률·품목별 지표를 확인하세요. 포함 확률을 보장하지 않습니다.
         residual = np.abs(
             validation["target"].to_numpy() - model.predict(validation[features])
         )
