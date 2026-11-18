@@ -1,5 +1,5 @@
-import PriceRadar from "@/components/price-radar";
+import ObservedPrices from "@/components/observed-prices";
 
 export default function DemoPage() {
-  return <PriceRadar />;
+  return <ObservedPrices tabbed />;
 }
