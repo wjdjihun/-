@@ -1,0 +1,131 @@
+.header {
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.demoLink,
+.source a {
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.demoLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 17px;
+  margin-bottom: 24px;
+}
+
+.card {
+  text-align: left;
+}
+
+.card[aria-pressed="true"] {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 1px var(--blue);
+}
+
+.cardValue,
+.cardSpec {
+  display: block;
+}
+
+.cardSpec,
+.chartNote,
+.source,
+.basketRow label span {
+  color: #66768a;
+  font-size: 12px;
+}
+
+.cardSpec {
+  margin-top: 8px;
+}
+
+.chart {
+  height: 265px;
+  padding: 10px 5px 0;
+}
+
+.chartNote {
+  margin: 4px 24px 20px;
+}
+
+.basket {
+  padding: 12px 24px 23px;
+}
+
+.basketRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 60px minmax(60px, auto);
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.basketRow label span {
+  display: block;
+  margin-top: 3px;
+}
+
+.basketRow input {
+  min-height: 34px;
+  width: 100%;
+  padding: 4px 7px;
+  border: 1px solid #b4c1d4;
+  border-radius: 6px;
+}
+
+.basketRow > strong {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.total {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding-top: 18px;
+  font-weight: 600;
+}
+
+.total strong {
+  color: var(--blue);
+  font-size: 22px;
+}
+
+.source {
+  padding: 22px 0 32px;
+}
+
+@media (max-width: 520px) {
+  .cards {
+    gap: 8px;
+  }
+
+  .card {
+    padding: 12px 8px;
+  }
+
+  .card .cardValue {
+    font-size: 20px;
+  }
+
+  .cardSpec {
+    font-size: 10px;
+  }
+
+  .basket {
+    padding-inline: 16px;
+  }
+}
