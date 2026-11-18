@@ -1,0 +1,31 @@
+{
+  "month": "2026-07",
+  "comparisonMonth": "2025-07",
+  "trainingCount": 96,
+  "validationCount": 77,
+  "prices": {
+    "cabbage": 4208,
+    "onion": 2399,
+    "potato": 388
+  },
+  "priorJuly": {
+    "cabbage": {
+      "forecast": 4603,
+      "previousMonth": 4263,
+      "actual": 5099,
+      "count": 14
+    },
+    "onion": {
+      "forecast": 2383,
+      "previousMonth": 2379,
+      "actual": 2106,
+      "count": 23
+    },
+    "potato": {
+      "forecast": 365,
+      "previousMonth": 310,
+      "actual": 333,
+      "count": 23
+    }
+  }
+}

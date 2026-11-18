@@ -6,24 +6,31 @@ import { ArrowUpRight, Radar, ShoppingBasket } from "lucide-react";
 import AnnualPriceCharts from "./annual-price-charts";
 import snapshot from "@/lib/kamis-prices.json";
 import backtest from "@/lib/kamis-backtest.json";
-import forecast from "@/lib/kamis-forecast.json";
-import { won } from "@/lib/utils";
+import monthly from "@/lib/kamis-monthly.json";
+import { percent, won } from "@/lib/utils";
 import styles from "./observed-prices.module.css";
 
 const products = snapshot.products.map((product) => ({
   ...product,
-  nextPrice: forecast.prices[product.id as keyof typeof forecast.prices],
+  nextPrice: monthly.prices[product.id as keyof typeof monthly.prices],
+  priorJuly: monthly.priorJuly[product.id as keyof typeof monthly.priorJuly],
   latest: product.history[product.history.length - 1],
 }));
 const initialQuantities = products.map(() => 1);
 const storageKey = "priceradar.observed.quantities.v1";
 const sourceDate = products.map(({ latest }) => latest.date).sort().at(-1);
 
+function yearOverYear(current: number, previous: number) {
+  const change = current - previous;
+  if (!change) return "변동 없음";
+  return `${won(Math.abs(change))}원 ${change > 0 ? "증가" : "감소"} (${percent(change / previous * 100)})`;
+}
+
 export default function ObservedPrices() {
   const [quantities, setQuantities] = useState(initialQuantities);
   const [ready, setReady] = useState(false);
-  const total = products.reduce(
-    (sum, item, i) => sum + item.latest.price * quantities[i],
+  const priorTotal = products.reduce(
+    (sum, item, i) => sum + item.priorJuly.actual * quantities[i],
     0,
   );
 
@@ -31,7 +38,6 @@ export default function ObservedPrices() {
     (sum, item, i) => sum + item.nextPrice * quantities[i],
     0,
   );
-  const difference = forecastTotal - total;
 
   useEffect(() => {
     try {
@@ -81,7 +87,7 @@ export default function ObservedPrices() {
             <div className="eyebrow">
               <span className="eyebrow-dot" /> KAMIS 소매 조사
             </div>
-            <h1>우리 장바구니 <span>다음 달 예상 가격</span></h1>
+            <h1>우리 장바구니 <span>2026년 7월 예상 가격</span></h1>
             <p>{snapshot.market} · {snapshot.grade} 등급 · 최근 조사일 {sourceDate}</p>
           </div>
         </section>
@@ -98,30 +104,44 @@ export default function ObservedPrices() {
                 {won(item.latest.price)}<span>원</span>
               </span>
               <span className={styles.cardSpec}>{item.variety} · {item.latest.date} 관측</span>
-              <span className={styles.forecastPrice}>다음 달 예상 <strong>{won(item.nextPrice)}원</strong></span>
+              <span className={styles.forecastPrice}>7월 평균 예상 <strong>{won(item.nextPrice)}원</strong></span>
             </a>
           ))}
         </div>
 
-        <AnnualPriceCharts products={products} />
-
-        <section className="panel" aria-labelledby="basket-title">
+        <section className="panel" id="july-basket" aria-labelledby="basket-title">
           <div className="panel-heading">
             <div>
-              <h2 id="basket-title"><ShoppingBasket size={17} /> 내 장바구니</h2>
-              <p>동일한 수량으로 최근 조사액과 다음 달 예상액을 비교합니다.</p>
+              <h2 id="basket-title"><ShoppingBasket size={17} /> 7월 장바구니</h2>
+              <p>7월 한 달에 살 수량을 입력하면 작년 7월과 같은 수량 기준으로 비교합니다.</p>
             </div>
           </div>
           <div className={styles.basket}>
+            <div className={styles.validationScroll}>
+              <table className={styles.validationTable} aria-label="품목별 7월 평균 단가와 작년 대비 증감">
+                <thead>
+                  <tr><th scope="col">품목</th><th scope="col">2025년 7월 실제</th><th scope="col">2026년 7월 AI 예상</th><th scope="col">작년 대비</th></tr>
+                </thead>
+                <tbody>
+                  {products.map(({ id, name, unit, priorJuly, nextPrice }) => (
+                    <tr key={id}>
+                      <th scope="row">{name} · {unit}</th>
+                      <td>{won(priorJuly.actual)}원</td><td>{won(nextPrice)}원</td>
+                      <td>{yearOverYear(nextPrice, priorJuly.actual)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {products.map((item, index) => (
               <div className={styles.basketRow} key={item.id}>
                 <label htmlFor={`quantity-${item.id}`}>
                   <strong>{item.name}</strong>
-                  <span>{won(item.latest.price)}원 / {item.unit}</span>
+                  <span>월 구매량 · {item.unit} 단위</span>
                 </label>
                 <input
                   id={`quantity-${item.id}`}
-                  aria-label={`${item.name} 수량 (${item.unit} 단위)`}
+                  aria-label={`${item.name} 월 구매량 (${item.unit} 단위)`}
                   type="number"
                   min="0"
                   max="999"
@@ -129,25 +149,55 @@ export default function ObservedPrices() {
                   value={quantities[index]}
                   onChange={(event) => updateQuantity(index, event.currentTarget.value)}
                 />
-                <strong>{won(item.latest.price * quantities[index])}원</strong>
+                <strong>{won(item.nextPrice * quantities[index])}원</strong>
               </div>
             ))}
             <div className={styles.total} aria-live="polite">
-              <span>최근 조사액</span><strong>{won(total)}원</strong>
+              <span>2025년 7월 가격으로 계산</span><strong>{won(priorTotal)}원</strong>
             </div>
             <div className={`${styles.total} ${styles.forecastPrice}`} aria-live="polite">
-              <span>다음 달 예상액</span><strong>{won(forecastTotal)}원</strong>
+              <span>2026년 7월 예상 생필품비</span><strong>{won(forecastTotal)}원</strong>
             </div>
-            <p className={styles.forecastNote}>
-              {difference === 0 ? "최근 조사액과 동일" : `최근 조사액 대비 ${won(Math.abs(difference))}원 ${difference > 0 ? "증가" : "감소"}`}
-              {" · "}{forecast.start}~{forecast.end} 관측 기간의 평균을 예측합니다.
+            <p className={styles.forecastNote} aria-live="polite">
+              작년 7월 대비 {yearOverYear(forecastTotal, priorTotal)}
             </p>
+          </div>
+        </section>
+        <AnnualPriceCharts products={products} />
+
+        <section className={`panel ${styles.validation}`} id="july-validation" aria-labelledby="july-validation-title">
+          <div className="panel-heading">
+            <div>
+              <h2 id="july-validation-title">작년 7월 예측 검증</h2>
+              <p>2025년 6월까지 확보한 자료로 모델을 학습하고, 2025년 7월 실제 평균과 비교했습니다.</p>
+            </div>
+          </div>
+          <div className={styles.validationBody}>
+            <div className={styles.validationScroll}>
+              <table className={styles.validationTable}>
+                <thead>
+                  <tr><th scope="col">품목</th><th scope="col">7월 실제 평균</th><th scope="col">7월 AI 예측</th><th scope="col">AI 오차</th><th scope="col">6월 평균 기준 오차</th></tr>
+                </thead>
+                <tbody>
+                  {products.map(({ id, name, priorJuly }) => (
+                    <tr key={id}>
+                      <th scope="row">{name}</th>
+                      <td>{won(priorJuly.actual)}원 ({priorJuly.count}일)</td>
+                      <td>{won(priorJuly.forecast)}원</td>
+                      <td>{percent(Math.abs(priorJuly.forecast - priorJuly.actual) / priorJuly.actual * 100).replace("+", "")}</td>
+                      <td>{percent(Math.abs(priorJuly.previousMonth - priorJuly.actual) / priorJuly.actual * 100).replace("+", "")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p>월평균은 KAMIS 조사일 가격의 평균입니다. 2026년 7월 예상 단가는 월평균을 목표로 학습한 XGBoost 모델로 계산했습니다.</p>
           </div>
         </section>
         <section className={`panel ${styles.validation}`} id="forecast-validation" aria-labelledby="validation-title">
           <div className="panel-heading">
             <div>
-              <h2 id="validation-title">30일 가격 예측 검증</h2>
+              <h2 id="validation-title">가격 추이 그래프의 30일 예측 검증</h2>
               <p>데이터 범위 {backtest.sourceStart} ~ {backtest.sourceEnd} · 실제 관측 {won(backtest.observationCount)}건</p>
             </div>
           </div>
@@ -158,7 +208,7 @@ export default function ObservedPrices() {
             <p>
               기준 날짜의 가격이 유지된다고 가정하면 평균 절대 백분율 오차(MAPE)가 {backtest.overall.baseline.toFixed(2)}%,
               가격·환율·식품지수를 학습한 XGBoost 모델은 {backtest.overall.model.toFixed(2)}%였습니다.
-              이번 검증에서 가격 유지 기준의 오차가 더 낮았습니다. 위 예상액은 XGBoost 결과입니다.
+              이번 검증에서 가격 유지 기준의 오차가 더 낮았습니다. 가격 추이 그래프의 7월 곡선은 이 XGBoost 모델의 결과입니다.
             </p>
             <div className={styles.validationScroll}>
               <table className={styles.validationTable}>
