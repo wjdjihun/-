@@ -204,7 +204,7 @@
 
 .yearlyHeader p,
 .yearlyNote,
-.forecastLegend,
+.chartLegend,
 .emptyChart {
   font-size: 13px;
   color: #55647a;
@@ -246,19 +246,27 @@
   border-radius: 2px;
 }
 
-.forecastLegend {
+.chartLegend {
   display: flex;
-  align-items: center;
-  gap: 7px;
+  flex-wrap: wrap;
+  gap: 6px 18px;
   margin-bottom: 12px;
 }
 
+.chartLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.gapSwatch,
 .forecastSwatch {
-  width: 9px;
-  height: 9px;
-  flex: 0 0 9px;
-  border-radius: 50%;
-  background: #bd5f18;
+  width: 18px;
+  border-top: 2px dashed #55647a;
+}
+
+.forecastSwatch {
+  border-top-color: #bd5f18;
 }
 
 .yearlyGrid {

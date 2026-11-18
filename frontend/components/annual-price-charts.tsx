@@ -5,6 +5,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -12,6 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import forecast from "@/lib/kamis-forecast.json";
+import trends from "@/lib/kamis-trends.json";
 import { won } from "@/lib/utils";
 import styles from "./observed-prices.module.css";
 
@@ -21,7 +23,6 @@ type Product = {
   variety: string;
   unit: string;
   history: { date: string; price: number }[];
-  nextPrice: number;
 };
 
 const yearColors: Record<string, string> = {
@@ -35,12 +36,13 @@ const yearColors: Record<string, string> = {
 const forecastYear = forecast.targetDate.slice(0, 4);
 const forecastColor = "#bd5f18";
 const comparisonDate = (date: string) => Date.parse(`2000${date.slice(4)}T00:00:00Z`);
+const forecastTime = comparisonDate(forecast.targetDate);
 const months = [0, 2, 4, 6, 8, 10].map((month) => Date.UTC(2000, month, 1));
 const maxGap = 14 * 86_400_000;
 
 function yearlySeries(product: Product) {
   const points = new Map<number, Record<string, number>>();
-  const series: { key: string; year: string }[] = [];
+  const series: { key: string; year: string; kind: "observed" | "gap" | "outlook"; count: number }[] = [];
   let previous = -Infinity;
   let currentYear = "";
   let key = "";
@@ -52,15 +54,33 @@ function yearlySeries(product: Product) {
     // Keep holidays within a line and break it across longer gaps in observations.
     if (year !== currentYear || time - previous > maxGap) {
       key = `observed-${series.length}`;
-      series.push({ key, year });
+      series.push({ key, year, kind: "observed", count: 0 });
       currentYear = year;
     }
+    series[series.length - 1].count += 1;
     previous = time;
     points.set(time, { ...points.get(time), time, [key]: price });
   }
 
-  const time = comparisonDate(forecast.targetDate);
-  points.set(time, { ...points.get(time), time, predicted: product.nextPrice });
+  const { gaps, outlook } = trends[product.id as keyof typeof trends];
+  for (const [index, gap] of gaps.entries()) {
+    addEstimates(gap, `gap-${index}`, "gap");
+  }
+  addEstimates(outlook, "outlook", "outlook");
+
+  function addEstimates(
+    estimates: Product["history"],
+    key: string,
+    kind: "gap" | "outlook",
+  ) {
+    if (!estimates.length) return;
+    series.push({ key, year: estimates[0].date.slice(0, 4), kind, count: estimates.length });
+    for (const { date, price } of estimates) {
+      const time = comparisonDate(date);
+      points.set(time, { ...points.get(time), time, [key]: price });
+    }
+  }
+
   return { series, data: [...points.values()].sort((left, right) => left.time - right.time) };
 }
 
@@ -99,19 +119,18 @@ export default function AnnualPriceCharts({ products }: { products: Product[] })
           ))}
         </div>
       </div>
-      {shownYears.includes(forecastYear) && (
-        <p className={styles.forecastLegend}>
-          <span className={styles.forecastSwatch} aria-hidden="true" />
-          2026년 7월 30일 기준 AI 예측 · 7월 27일~8월 2일 평균 예상
-        </p>
-      )}
+      <div className={styles.chartLegend}>
+        <span><i className={styles.gapSwatch} aria-hidden="true" /> 관측 공백의 AI 추정</span>
+        {shownYears.includes(forecastYear) && (
+          <span><i className={styles.forecastSwatch} aria-hidden="true" /> 2026년 7월 AI 예측 · 각 날짜 전후 7일 평균</span>
+        )}
+      </div>
       <div className={styles.yearlyGrid}>
         {charts.map(({ id, name, variety, unit, series, data }) => {
           const activeSeries = series.filter(({ year }) => shownYears.includes(year));
           const showForecast = shownYears.includes(forecastYear);
           const activeData = data.filter(
-            (point) => (showForecast && point.predicted !== undefined) ||
-              activeSeries.some(({ key }) => point[key] !== undefined),
+            (point) => activeSeries.some(({ key }) => point[key] !== undefined),
           );
           return (
             <section key={id} id={`price-${id}`} className={`panel ${styles.yearlyCard}`} aria-labelledby={`price-title-${id}`}>
@@ -155,26 +174,27 @@ export default function AnnualPriceCharts({ products }: { products: Product[] })
                         formatter={(value, label) => [`${won(Number(value))}원 / ${unit}`, label]}
                       />
                       {showForecast && <ReferenceLine x={Date.UTC(2000, 6, 1)} stroke="#a8b3c5" strokeDasharray="4 4" />}
-                      {activeSeries.map(({ key, year }) => (
+                      {activeSeries.map(({ key, year, kind, count }) => (
                         <Line
                           key={key}
                           dataKey={key}
-                          name={`${year}년 관측`}
-                          stroke={yearColors[year]}
+                          type={kind === "observed" ? "linear" : "monotoneX"}
+                          name={`${year}년 ${kind === "observed" ? "관측" : kind === "gap" ? "공백 AI 추정" : "AI 예측 (7일 평균)"}`}
+                          stroke={kind === "outlook" ? forecastColor : yearColors[year]}
+                          strokeDasharray={kind === "observed" ? undefined : "4 4"}
                           strokeWidth={2.25}
                           connectNulls
-                          dot={activeData.filter((point) => point[key] !== undefined).length === 1}
+                          dot={count === 1}
                           isAnimationActive={false}
                         />
                       ))}
                       {showForecast && (
-                        <Line
-                          dataKey="predicted"
-                          name={`${forecastYear}년 AI 예측`}
-                          stroke={forecastColor}
-                          strokeWidth={0}
-                          dot={{ r: 5, fill: forecastColor, stroke: "#fff", strokeWidth: 1.5 }}
-                          isAnimationActive={false}
+                        <ReferenceDot
+                          x={forecastTime}
+                          y={forecast.prices[id as keyof typeof forecast.prices]}
+                          r={4.5}
+                          fill={forecastColor}
+                          stroke="#fff"
                         />
                       )}
                     </LineChart>
@@ -185,7 +205,9 @@ export default function AnnualPriceCharts({ products }: { products: Product[] })
           );
         })}
       </div>
-      <p className={styles.yearlyNote}>품목별 조사 시기가 다릅니다. 2025년 9월에는 소매가격 자료가 비어 있습니다.</p>
+      <p className={styles.yearlyNote}>
+        2025년 9월 등 일부 공백은 모델 추정치를 앞뒤 관측값에 맞춰 이었습니다. 봄배추처럼 조사 시기가 제한된 품목은 긴 공백을 그대로 표시합니다.
+      </p>
     </section>
   );
 }
