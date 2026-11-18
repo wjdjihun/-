@@ -25,11 +25,8 @@
 
 .card {
   text-align: left;
-}
-
-.card[aria-pressed="true"] {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 1px var(--blue);
+  text-decoration: none;
+  color: inherit;
 }
 
 .cardValue,
@@ -166,14 +163,6 @@
   margin: 0;
 }
 
-.historyButton {
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 5px 9px;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
 .forecastPrice {
   display: block;
   color: #934109;
@@ -192,4 +181,107 @@
   margin-top: 10px;
   color: #66768a;
   font-size: 12px;
+}
+
+.yearly {
+  margin-bottom: 24px;
+  scroll-margin-top: 88px;
+}
+
+.yearlyHeader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.yearlyHeader h2 {
+  margin: 0 0 4px;
+  font-size: 21px;
+}
+
+.yearlyHeader p,
+.yearlyNote,
+.forecastLegend,
+.emptyChart {
+  font-size: 13px;
+  color: #55647a;
+}
+
+.yearControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.yearButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 33px;
+  padding: 4px 8px;
+  border: 1px solid #c6d0df;
+  border-radius: 7px;
+  color: #566478;
+  background: #fff;
+  font-size: 12px;
+}
+
+.yearButton[aria-pressed="true"] {
+  font-weight: 700;
+  color: #192a40;
+  border-color: #8b9bb4;
+  background: #edf2f9;
+}
+
+.yearButton[aria-pressed="false"] .yearSwatch {
+  opacity: 0.45;
+}
+
+.yearSwatch {
+  width: 13px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.forecastLegend {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.forecastSwatch {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-radius: 50%;
+  background: #bd5f18;
+}
+
+.yearlyGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.yearlyCard {
+  min-width: 0;
+  scroll-margin-top: 88px;
+}
+
+.emptyChart {
+  padding: 15px;
+}
+
+.yearlyNote {
+  margin: 10px 0 0;
+}
+
+@media (max-width: 900px) {
+  .yearlyGrid {
+    grid-template-columns: 1fr;
+  }
 }

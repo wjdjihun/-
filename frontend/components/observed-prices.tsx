@@ -3,15 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowUpRight, Radar, ShoppingBasket } from "lucide-react";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import AnnualPriceCharts from "./annual-price-charts";
 import snapshot from "@/lib/kamis-prices.json";
 import backtest from "@/lib/kamis-backtest.json";
 import forecast from "@/lib/kamis-forecast.json";
@@ -26,16 +18,10 @@ const products = snapshot.products.map((product) => ({
 const initialQuantities = products.map(() => 1);
 const storageKey = "priceradar.observed.quantities.v1";
 const sourceDate = products.map(({ latest }) => latest.date).sort().at(-1);
-const toTime = (date: string) => Date.parse(date + "T00:00:00Z");
-const formatDay = (time: number) =>
-  new Date(time).toISOString().slice(0, 10);
 
 export default function ObservedPrices() {
-  const [selected, setSelected] = useState(0);
-  const [showFullHistory, setShowFullHistory] = useState(false);
   const [quantities, setQuantities] = useState(initialQuantities);
   const [ready, setReady] = useState(false);
-  const product = products[selected];
   const total = products.reduce(
     (sum, item, i) => sum + item.latest.price * quantities[i],
     0,
@@ -46,13 +32,6 @@ export default function ObservedPrices() {
     0,
   );
   const difference = forecastTotal - total;
-  const history = showFullHistory
-    ? product.history
-    : product.history.filter(({ date }) => date >= "2025-07-01");
-  const chartData = [
-    ...history.map(({ date, price }) => ({ time: toTime(date), price })),
-    { time: toTime(forecast.targetDate), predicted: product.nextPrice },
-  ];
 
   useEffect(() => {
     try {
@@ -108,13 +87,11 @@ export default function ObservedPrices() {
         </section>
 
         <div className={styles.cards} aria-label="품목별 최근 조사 가격">
-          {products.map((item, index) => (
-            <button
-              type="button"
+          {products.map((item) => (
+            <a
+              href={`#price-${item.id}`}
               key={item.id}
               className={`stat-card ${styles.card}`}
-              aria-pressed={index === selected}
-              onClick={() => setSelected(index)}
             >
               <span className="stat-label">{item.name} <span>{item.unit}</span></span>
               <span className={`stat-value ${styles.cardValue}`}>
@@ -122,118 +99,51 @@ export default function ObservedPrices() {
               </span>
               <span className={styles.cardSpec}>{item.variety} · {item.latest.date} 관측</span>
               <span className={styles.forecastPrice}>다음 달 예상 <strong>{won(item.nextPrice)}원</strong></span>
-            </button>
+            </a>
           ))}
         </div>
 
-        <div className="main-grid">
-          <section className="panel" aria-labelledby="history-title">
-            <div className="panel-heading">
-              <div>
-                <h2 id="history-title">{product.name} 가격 추이</h2>
-                <p>{product.variety} · {product.unit} · {history.length}회 관측</p>
-              </div>
-              <button
-                type="button"
-                className={styles.historyButton}
-                aria-pressed={showFullHistory}
-                onClick={() => setShowFullHistory((full) => !full)}
-              >
-                {showFullHistory ? "최근 1년 보기" : "전체 이력 보기"}
-              </button>
-            </div>
-            <div className={styles.chart}>
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <LineChart
-                  data={chartData}
-                  margin={{ top: 16, right: 23, left: 0, bottom: 6 }}
-                >
-                  <CartesianGrid vertical={false} stroke="#e9edf4" strokeDasharray="3 4" />
-                  <XAxis
-                    dataKey="time"
-                    type="number"
-                    domain={["dataMin", "dataMax"]}
-                    tickFormatter={(n) => showFullHistory ? formatDay(n).slice(0, 7) : formatDay(n).slice(5).replace("-", "/")}
-                    axisLine={false}
-                    tickLine={false}
-                    minTickGap={24}
-                    tick={{ fontSize: 11, fill: "#66768a" }}
-                  />
-                  <YAxis
-                    width={60}
-                    domain={["auto", "auto"]}
-                    tickFormatter={won}
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 11, fill: "#66768a" }}
-                  />
-                  <Tooltip
-                    labelFormatter={(n) => formatDay(Number(n))}
-                    formatter={(n, name) => [`${won(Number(n))}원 / ${product.unit}`, name === "predicted" ? "다음 달 모델 예측" : "관측 가격"]}
-                  />
-                  <Line
-                    dataKey="price"
-                    type="linear"
-                    stroke="#3067e9"
-                    strokeWidth={2.5}
-                    dot={false}
-                    isAnimationActive={false}
-                  />
-                  <Line
-                    dataKey="predicted"
-                    stroke="#a04b0a"
-                    strokeWidth={0}
-                    dot={{ r: 6, fill: "#bd5f18" }}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <p className={styles.chartNote}>
-              파란 선: 관측 가격 {history[0].date}~{product.latest.date} · 주황 점: {forecast.targetDate} 전후 예상
-            </p>
-          </section>
+        <AnnualPriceCharts products={products} />
 
-          <section className="panel" aria-labelledby="basket-title">
-            <div className="panel-heading">
-              <div>
-                <h2 id="basket-title"><ShoppingBasket size={17} /> 내 장바구니</h2>
-                <p>동일한 수량으로 최근 조사액과 다음 달 예상액을 비교합니다.</p>
-              </div>
+        <section className="panel" aria-labelledby="basket-title">
+          <div className="panel-heading">
+            <div>
+              <h2 id="basket-title"><ShoppingBasket size={17} /> 내 장바구니</h2>
+              <p>동일한 수량으로 최근 조사액과 다음 달 예상액을 비교합니다.</p>
             </div>
-            <div className={styles.basket}>
-              {products.map((item, index) => (
-                <div className={styles.basketRow} key={item.id}>
-                  <label htmlFor={`quantity-${item.id}`}>
-                    <strong>{item.name}</strong>
-                    <span>{won(item.latest.price)}원 / {item.unit}</span>
-                  </label>
-                  <input
-                    id={`quantity-${item.id}`}
-                    aria-label={`${item.name} 수량 (${item.unit} 단위)`}
-                    type="number"
-                    min="0"
-                    max="999"
-                    step="1"
-                    value={quantities[index]}
-                    onChange={(event) => updateQuantity(index, event.currentTarget.value)}
-                  />
-                  <strong>{won(item.latest.price * quantities[index])}원</strong>
-                </div>
-              ))}
-              <div className={styles.total} aria-live="polite">
-                <span>최근 조사액</span><strong>{won(total)}원</strong>
+          </div>
+          <div className={styles.basket}>
+            {products.map((item, index) => (
+              <div className={styles.basketRow} key={item.id}>
+                <label htmlFor={`quantity-${item.id}`}>
+                  <strong>{item.name}</strong>
+                  <span>{won(item.latest.price)}원 / {item.unit}</span>
+                </label>
+                <input
+                  id={`quantity-${item.id}`}
+                  aria-label={`${item.name} 수량 (${item.unit} 단위)`}
+                  type="number"
+                  min="0"
+                  max="999"
+                  step="1"
+                  value={quantities[index]}
+                  onChange={(event) => updateQuantity(index, event.currentTarget.value)}
+                />
+                <strong>{won(item.latest.price * quantities[index])}원</strong>
               </div>
-              <div className={`${styles.total} ${styles.forecastPrice}`} aria-live="polite">
-                <span>다음 달 예상액</span><strong>{won(forecastTotal)}원</strong>
-              </div>
-              <p className={styles.forecastNote}>
-                {difference === 0 ? "최근 조사액과 동일" : `최근 조사액 대비 ${won(Math.abs(difference))}원 ${difference > 0 ? "증가" : "감소"}`}
-                {" · "}{forecast.start}~{forecast.end} 관측 기간의 평균을 예측합니다.
-              </p>
+            ))}
+            <div className={styles.total} aria-live="polite">
+              <span>최근 조사액</span><strong>{won(total)}원</strong>
             </div>
-          </section>
-        </div>
+            <div className={`${styles.total} ${styles.forecastPrice}`} aria-live="polite">
+              <span>다음 달 예상액</span><strong>{won(forecastTotal)}원</strong>
+            </div>
+            <p className={styles.forecastNote}>
+              {difference === 0 ? "최근 조사액과 동일" : `최근 조사액 대비 ${won(Math.abs(difference))}원 ${difference > 0 ? "증가" : "감소"}`}
+              {" · "}{forecast.start}~{forecast.end} 관측 기간의 평균을 예측합니다.
+            </p>
+          </div>
+        </section>
         <section className={`panel ${styles.validation}`} id="forecast-validation" aria-labelledby="validation-title">
           <div className="panel-heading">
             <div>
