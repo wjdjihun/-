@@ -128,6 +128,9 @@ export default function AnnualPriceCharts({ products }: { products: Product[] })
       <div className={styles.yearlyGrid}>
         {charts.map(({ id, name, variety, unit, series, data }) => {
           const activeSeries = series.filter(({ year }) => shownYears.includes(year));
+          const missingYears = years.filter((year) =>
+            shownYears.includes(year) && !activeSeries.some((line) => line.year === year),
+          );
           const showForecast = shownYears.includes(forecastYear);
           const activeData = data.filter(
             (point) => activeSeries.some(({ key }) => point[key] !== undefined),
@@ -138,6 +141,7 @@ export default function AnnualPriceCharts({ products }: { products: Product[] })
                 <div>
                   <h2 id={`price-title-${id}`}>{name} 가격 추이</h2>
                   <p>{variety} · 원 / {unit}</p>
+                  {missingYears.length > 0 && <p>{missingYears.join("·")}년 동일 규격 관측 자료 없음</p>}
                 </div>
               </div>
               <div className={styles.chart}>
@@ -208,6 +212,14 @@ export default function AnnualPriceCharts({ products }: { products: Product[] })
       <p className={styles.yearlyNote}>
         2025년 9월 등 일부 공백은 모델 추정치를 앞뒤 관측값에 맞춰 이었습니다. 봄배추처럼 조사 시기가 제한된 품목은 긴 공백을 그대로 표시합니다.
       </p>
+      {shownYears.includes("2021") && (
+        <p className={styles.yearlyNote}>
+          2021년 상반기 관측은 그래프 비교용이며, 모델 학습은 2021년 7월부터입니다.{" "}
+          <a className={styles.demoLink} href="https://data.mafra.go.kr/opendata/data/indexOpenDataDetail.do?data_id=20251017000000002761">
+            KAMIS 과거 자료
+          </a>
+        </p>
+      )}
     </section>
   );
 }
