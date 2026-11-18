@@ -199,12 +199,15 @@ export default function ObservedPrices() {
           <div className="panel-heading">
             <div>
               <h2 id="validation-title">30일 가격 예측 검증</h2>
-              <p>검증 기준일 {backtest.start} ~ {backtest.end} · 평가 {backtest.overall.count}건</p>
+              <p>데이터 범위 {backtest.sourceStart} ~ {backtest.sourceEnd} · 실제 관측 {won(backtest.observationCount)}건</p>
             </div>
           </div>
           <div className={styles.validationBody}>
             <p>
-              기준 날짜의 가격이 유지된다고 가정하면 평균 오차가 {backtest.overall.baseline.toFixed(2)}%,
+              검증 기준일 {backtest.start} ~ {backtest.end} · 평가 {backtest.overall.count}건
+            </p>
+            <p>
+              기준 날짜의 가격이 유지된다고 가정하면 평균 절대 백분율 오차(MAPE)가 {backtest.overall.baseline.toFixed(2)}%,
               가격·환율·식품지수를 학습한 XGBoost 모델은 {backtest.overall.model.toFixed(2)}%였습니다.
               이 검증에서는 가격 유지 기준의 오차가 낮아 장바구니에는 조사 단가를 표시합니다.
             </p>
@@ -228,7 +231,12 @@ export default function ObservedPrices() {
               </table>
             </div>
             <p className={styles.chartNote}>
-              평가 대상은 {backtest.basis}입니다. 실제 가격이 {backtest.minimumObservations}회 이상 관측된 경우를 평가했습니다.
+              평가 대상은 {backtest.basis}입니다. {backtest.minimumObservations}회 이상 관측된 경우를 평가했습니다.
+              {backtest.missingMonth && ` ${backtest.missingMonth} 소매가격에는 자료 공백이 있습니다.`}
+            </p>
+            <p>
+              전체 기간 재학습 {won(backtest.refitRows)}건 ·{" "}
+              <a className={styles.demoLink} href="/downloads/kamis-five-year-model.zip" download>학습 데이터와 모델 다운로드</a>
             </p>
           </div>
         </section>

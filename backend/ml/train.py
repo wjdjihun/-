@@ -15,7 +15,7 @@ from ml.feature_engineering import (
 from ml.evaluate import evaluate
 
 
-def train(path: Path, output: Path, allow_demo=False, *, model_a_only=False):
+def train(path: Path, output: Path, allow_demo=False, *, model_a_only=False, refit=False):
     # TODO[AI-04] [C] 학습 파이프라인은 구현됨. 실제 정규화 CSV로 학습·평가하고 산출물과 재현 설정을 전달하세요.
     # data/demo/training.csv 결과는 합성 자료의 실행 검증이며 실제 모델 성능이 아닙니다.
     feature_options = {
@@ -24,7 +24,9 @@ def train(path: Path, output: Path, allow_demo=False, *, model_a_only=False):
         "min_target_observations": 3 if model_a_only else 7,
     }
     source = load_prices(path, allow_demo=allow_demo, include_news=not model_a_only)
+    cutoff = source["date"].max()
     frame = engineer_features(source, **feature_options)
+    frame = frame[frame["label_end"] <= cutoff]
     training, validation, test = time_split(frame)
     identity = sorted(
         c for c in frame if c.startswith("product_") and c != "product_id"
@@ -57,7 +59,12 @@ def train(path: Path, output: Path, allow_demo=False, *, model_a_only=False):
         "horizon_days": 30,
         "news_window_days": None if model_a_only else 7,
         "feature_importance": {},
-        "training_cutoff": str(source.date.max().date()),
+        "training_cutoff": str(cutoff.date()),
+        "source_observations": len(source),
+        "source_period": {
+            "start": str(source.date.min().date()),
+            "end": str(cutoff.date()),
+        },
     }
     output.mkdir(parents=True, exist_ok=True)
     models = [("model_a", a)] if model_a_only else [("model_a", a), ("model_b", b)]
@@ -143,6 +150,22 @@ def train(path: Path, output: Path, allow_demo=False, *, model_a_only=False):
                 }
                 for (_, row), estimate in zip(subset.iterrows(), estimates)
             ]
+        if refit:
+            iterations = model.best_iteration + 1
+            final = XGBRegressor(**{
+                **model.get_params(),
+                "n_estimators": iterations,
+                "early_stopping_rounds": None,
+            })
+            final.fit(frame[features], frame["target"], verbose=False)
+            filename = f"{name}_refit.ubj"
+            final.save_model(output / filename)
+            result.setdefault("refits", {})[name] = {
+                "file": filename,
+                "fit_rows": len(frame),
+                "label_end": str(frame.label_end.max().date()),
+                "iterations": iterations,
+            }
     if not model_a_only:
         result["news_improvement_mape"] = (
             result["models"]["model_a"]["MAPE"] - result["models"]["model_b"]["MAPE"]
@@ -161,8 +184,15 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, default=Path("ml/artifacts"))
     parser.add_argument("--allow-demo", action="store_true")
     parser.add_argument("--model-a-only", action="store_true")
+    parser.add_argument("--refit", action="store_true", help="검증 모델과 별도로 전체 학습 가능 사례로 재학습")
     args = parser.parse_args()
-    result = train(args.data, args.output, args.allow_demo, model_a_only=args.model_a_only)
+    result = train(
+        args.data,
+        args.output,
+        args.allow_demo,
+        model_a_only=args.model_a_only,
+        refit=args.refit,
+    )
     print(
         json.dumps(
             {

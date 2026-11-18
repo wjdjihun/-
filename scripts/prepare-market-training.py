@@ -61,7 +61,7 @@ def read_food_index(path):
     return sorted(series)
 
 
-def make_rows(snapshots, fx, food):
+def make_rows(snapshots, fx, food, *, start=None, end=None):
     fx_dates, food_dates = [d for d, _ in fx], [d for d, _ in food]
     observations = {}
     for path in snapshots:
@@ -74,7 +74,10 @@ def make_rows(snapshots, fx, food):
                 "source": data["source"],
             }
             for item in product["history"]:
-                key = product["id"], date.fromisoformat(item["date"])
+                day = date.fromisoformat(item["date"])
+                if (start is not None and day < start) or (end is not None and day > end):
+                    continue
+                key = product["id"], day
                 row = {"price": item["price"], **metadata}
                 if observations.setdefault(key, row) != row:
                     raise ValueError(f"Conflicting price observation: {key}")
@@ -101,8 +104,18 @@ if __name__ == "__main__":
     parser.add_argument("--fx", type=Path, required=True)
     parser.add_argument("--food", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--start", type=date.fromisoformat)
+    parser.add_argument("--end", type=date.fromisoformat)
     args = parser.parse_args()
-    rows = list(make_rows(args.price, read_exchange_rates(args.fx), read_food_index(args.food)))
+    if args.start and args.end and args.start > args.end:
+        parser.error("--start must be on or before --end.")
+    rows = list(make_rows(
+        args.price,
+        read_exchange_rates(args.fx),
+        read_food_index(args.food),
+        start=args.start,
+        end=args.end,
+    ))
     if not rows:
         parser.error("No price observations had both economic inputs available.")
     with args.output.open("w", encoding="utf-8", newline="") as stream:

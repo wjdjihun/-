@@ -16,7 +16,7 @@ A: 가격·경제 데이터 / B: 뉴스 / C: 가격 모델 / D: 서비스 API·�
 | AI-04 | C | [backend/ml/train.py](../backend/ml/train.py#L19) | 19 | 학습 파이프라인은 구현됨. 실제 정규화 CSV로 학습·평가하고 산출물과 재현 설정을 전달하세요. |
 | AI-05 | C/D | [backend/app/services/dataset.py](../backend/app/services/dataset.py#L42) | 42 | 현재 실제 데이터 모드에는 실제 학습 모델 B가 필요합니다. |
 | AI-05 | C/D | [backend/ml/predict.py](../backend/ml/predict.py#L11) | 11 | 현재 모델 B 파일을 고정 로드합니다. 모델 A 우선 연결 시 명시적인 모델 선택을 추가하세요. |
-| AI-06 | C | [backend/ml/train.py](../backend/ml/train.py#L94) | 94 | 실제 자료로 예측 범위의 테스트 포함률·품목별 지표를 확인하세요. 포함 확률을 보장하지 않습니다. |
+| AI-06 | C | [backend/ml/train.py](../backend/ml/train.py#L101) | 101 | 실제 자료로 예측 범위의 테스트 포함률·품목별 지표를 확인하세요. 포함 확률을 보장하지 않습니다. |
 | API-01 | A | [backend/app/providers/collectors.py](../backend/app/providers/collectors.py#L38) | 38 | 클라이언트는 작성됨. 실제 발급 키로 인증·응답·할당량을 검증하세요. |
 | API-02 | A | [backend/app/providers/collectors.py](../backend/app/providers/collectors.py#L124) | 124 | 공식 콘솔 URL에서 키를 {API_KEY}로 치환해 설정하세요. 고정 조회 코드는 미확정입니다. |
 | API-03 | A | [backend/app/providers/collectors.py](../backend/app/providers/collectors.py#L67) | 67 | 공식 콘솔의 통계표·기관·분류·항목 코드를 입력하고 실제 응답을 검증하세요. |

@@ -42,9 +42,15 @@ def test_model_a_can_train_and_predict_without_news_columns(tmp_path):
     prices = tmp_path / "prices.csv"
     source.to_csv(prices, index=False)
 
-    metrics = train(prices, tmp_path, allow_demo=True, model_a_only=True)
+    metrics = train(prices, tmp_path, allow_demo=True, model_a_only=True, refit=True)
     assert set(metrics["models"]) == {"baseline", "model_a"}
     assert metrics["product_metrics"]["onion"]["model_a"]["count"] > 0
     assert not (tmp_path / "model_b.joblib").exists()
+    cutoff = str(source["date"].max())
+    assert metrics["splits"]["test"]["label_end"] <= cutoff
+    refit = metrics["refits"]["model_a"]
+    assert refit["label_end"] <= cutoff
+    assert refit["fit_rows"] > metrics["rows"]
+    assert (tmp_path / refit["file"]).is_file()
     engine = PredictionEngine(tmp_path, prices, model_name="model_a")
     assert engine.predict("onion", "2026-11-14")["prediction"] > 0

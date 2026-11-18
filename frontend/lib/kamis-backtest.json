@@ -1,28 +1,33 @@
 {
   "basis": "기준일 이후 27~33일 사이 소매 관측 가격의 평균",
-  "start": "2025-04-10",
-  "end": "2026-05-29",
+  "sourceStart": "2021-07-01",
+  "sourceEnd": "2026-06-30",
+  "observationCount": 2024,
+  "refitRows": 1269,
+  "missingMonth": "2025년 9월",
+  "start": "2025-02-25",
+  "end": "2026-05-28",
   "minimumObservations": 3,
   "overall": {
-    "baseline": 5.589696924452981,
-    "model": 15.576817230587809,
-    "count": 244
+    "baseline": 6.302860627876184,
+    "model": 10.975656428150602,
+    "count": 278
   },
   "products": {
     "cabbage": {
       "baseline": 34.34157036850954,
-      "model": 53.89987217082037,
+      "model": 63.47382653599697,
       "count": 4
     },
     "onion": {
-      "baseline": 5.085906517658312,
-      "model": 19.633274399915564,
-      "count": 151
+      "baseline": 6.124557827280894,
+      "model": 11.074362560601969,
+      "count": 172
     },
     "potato": {
-      "baseline": 5.152223414899823,
-      "model": 6.972129002167342,
-      "count": 89
+      "baseline": 5.503970850815952,
+      "model": 8.750459024101382,
+      "count": 102
     }
   }
 }
