@@ -123,3 +123,16 @@ def test_real_mode_never_falls_back_to_a_demo_model(tmp_path):
         create_app(tmp_path / "basket.sqlite3", settings=settings)
     ) as client:
         assert client.get("/api/products").status_code == 503
+
+
+def test_sparse_price_mode_keeps_missing_lags_as_missing():
+    source = fixture_frame(100)
+    missing_day = source.date.iloc[50]
+    source = source[source.date.ne(missing_day)]
+    result = engineer_features(
+        source, include_target=False, allow_sparse_prices=True
+    )
+    following = result[result.date.eq(missing_day + pd.Timedelta(days=7))]
+    assert len(following) == 1
+    assert following["lag_7"].isna().all()
+    assert following["change_7"].isna().all()

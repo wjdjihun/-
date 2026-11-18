@@ -165,3 +165,31 @@
 .validationBody .chartNote {
   margin: 0;
 }
+
+.historyButton {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 5px 9px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.forecastPrice {
+  display: block;
+  color: #934109;
+  margin-top: 6px;
+}
+
+.total.forecastPrice {
+  display: flex;
+}
+
+.forecastPrice strong {
+  color: inherit;
+}
+
+.forecastNote {
+  margin-top: 10px;
+  color: #66768a;
+  font-size: 12px;
+}

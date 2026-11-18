@@ -3,31 +3,31 @@
   "sourceStart": "2021-07-01",
   "sourceEnd": "2026-06-30",
   "observationCount": 2024,
-  "refitRows": 1269,
+  "refitRows": 1688,
   "missingMonth": "2025년 9월",
-  "start": "2025-02-25",
+  "start": "2025-04-08",
   "end": "2026-05-28",
   "minimumObservations": 3,
   "overall": {
-    "baseline": 6.302860627876184,
-    "model": 10.975656428150602,
-    "count": 278
+    "baseline": 6.424326688509692,
+    "model": 16.905061062002435,
+    "count": 377
   },
   "products": {
     "cabbage": {
-      "baseline": 34.34157036850954,
-      "model": 63.47382653599697,
-      "count": 4
+      "baseline": 23.757001164451996,
+      "model": 35.616102742697436,
+      "count": 24
     },
     "onion": {
-      "baseline": 6.124557827280894,
-      "model": 11.074362560601969,
-      "count": 172
+      "baseline": 5.302744857844771,
+      "model": 17.451456587631554,
+      "count": 215
     },
     "potato": {
-      "baseline": 5.503970850815952,
-      "model": 8.750459024101382,
-      "count": 102
+      "baseline": 5.157340501338264,
+      "model": 12.79969846528549,
+      "count": 138
     }
   }
 }

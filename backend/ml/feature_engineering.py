@@ -23,6 +23,7 @@ def engineer_features(
     include_news=True,
     lag_tolerance_days=0,
     min_target_observations=7,
+    allow_sparse_prices=False,
 ):
     groups = []
     for product_id, g in df.groupby("product_id", sort=True):
@@ -67,8 +68,10 @@ def engineer_features(
             frame["product_id"] == product_id
         ).astype(float)
     # TODO[AI-03] [C] 전처리와 함께 이 검사도 모델별로 분리해야 뉴스 없는 모델 A를 학습할 수 있습니다.
+    # XGBoost learns missing lag and rolling values without inventing observations.
+    recent_prices = ["price"] if allow_sparse_prices else PRICE_FEATURES
     required = (
-        PRICE_FEATURES
+        recent_prices
         + ECON_FEATURES
         + (NEWS_FEATURES if include_news else [])
         + (["target"] if include_target else [])

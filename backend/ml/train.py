@@ -15,11 +15,12 @@ from ml.feature_engineering import (
 from ml.evaluate import evaluate
 
 
-def train(path: Path, output: Path, allow_demo=False, *, model_a_only=False, refit=False):
+def train(path: Path, output: Path, allow_demo=False, *, model_a_only=False, refit=False, allow_sparse_prices=False):
     # TODO[AI-04] [C] 학습 파이프라인은 구현됨. 실제 정규화 CSV로 학습·평가하고 산출물과 재현 설정을 전달하세요.
     # data/demo/training.csv 결과는 합성 자료의 실행 검증이며 실제 모델 성능이 아닙니다.
     feature_options = {
         "include_news": not model_a_only,
+        "allow_sparse_prices": allow_sparse_prices,
         "lag_tolerance_days": 3 if model_a_only else 0,
         "min_target_observations": 3 if model_a_only else 7,
     }
@@ -184,6 +185,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, default=Path("ml/artifacts"))
     parser.add_argument("--allow-demo", action="store_true")
     parser.add_argument("--model-a-only", action="store_true")
+    parser.add_argument("--allow-sparse-prices", action="store_true")
     parser.add_argument("--refit", action="store_true", help="검증 모델과 별도로 전체 학습 가능 사례로 재학습")
     args = parser.parse_args()
     result = train(
@@ -192,6 +194,7 @@ if __name__ == "__main__":
         args.allow_demo,
         model_a_only=args.model_a_only,
         refit=args.refit,
+        allow_sparse_prices=args.allow_sparse_prices,
     )
     print(
         json.dumps(
