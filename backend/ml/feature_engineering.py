@@ -16,15 +16,25 @@ ECON_FEATURES = ["usd_krw", "commodity_index"]
 NEWS_FEATURES = ["news_count", "news_up", "news_down", "news_supply", "news_demand"]
 
 
-def engineer_features(df: pd.DataFrame, include_target=True):
+def engineer_features(
+    df: pd.DataFrame,
+    include_target=True,
+    *,
+    include_news=True,
+    lag_tolerance_days=0,
+    min_target_observations=7,
+):
     groups = []
     for product_id, g in df.groupby("product_id", sort=True):
         g = g.sort_values("date").copy().set_index("date")
         # Calendar joins rather than row shifts: missing dates never become "7 days ago".
         original = g["price"]
         for lag in (7, 14, 30):
+            dates = g.index - pd.Timedelta(days=lag)
             g[f"lag_{lag}"] = original.reindex(
-                g.index - pd.Timedelta(days=lag)
+                dates,
+                method="ffill",
+                tolerance=pd.Timedelta(days=lag_tolerance_days),
             ).to_numpy()
         g["mean_7"] = original.rolling("7D", min_periods=4).mean()
         g["mean_30"] = original.rolling("30D", min_periods=15).mean()
@@ -40,8 +50,13 @@ def engineer_features(df: pd.DataFrame, include_target=True):
                 for d in range(27, 34)
             ]
             stacked = np.array(future)
-            complete = np.isfinite(stacked).all(axis=0)
-            g["target"] = np.where(complete, stacked.mean(axis=0), np.nan)
+            count = np.isfinite(stacked).sum(axis=0)
+            g["target"] = np.divide(
+                np.nansum(stacked, axis=0),
+                count,
+                out=np.full(len(g), np.nan),
+                where=count >= min_target_observations,
+            )
             g["target_date"] = g.index + pd.Timedelta(days=30)
             g["label_end"] = g.index + pd.Timedelta(days=33)
         groups.append(g.reset_index())
@@ -55,7 +70,7 @@ def engineer_features(df: pd.DataFrame, include_target=True):
     required = (
         PRICE_FEATURES
         + ECON_FEATURES
-        + NEWS_FEATURES
+        + (NEWS_FEATURES if include_news else [])
         + (["target"] if include_target else [])
     )
     return (

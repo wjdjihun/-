@@ -32,3 +32,19 @@ def test_synthetic_pipeline_train_save_evaluate_reload_predict(tmp_path):
         engine.predict("rice", "2026-10-01")
     with pytest.raises(ValueError, match="allow-demo"):
         train(data, tmp_path / "not-allowed", allow_demo=False)
+
+
+def test_model_a_can_train_and_predict_without_news_columns(tmp_path):
+    import pandas as pd
+
+    source = pd.read_csv(ROOT / "data/demo/training.csv")
+    source = source.drop(columns=source.filter(regex="^news_").columns)
+    prices = tmp_path / "prices.csv"
+    source.to_csv(prices, index=False)
+
+    metrics = train(prices, tmp_path, allow_demo=True, model_a_only=True)
+    assert set(metrics["models"]) == {"baseline", "model_a"}
+    assert metrics["product_metrics"]["onion"]["model_a"]["count"] > 0
+    assert not (tmp_path / "model_b.joblib").exists()
+    engine = PredictionEngine(tmp_path, prices, model_name="model_a")
+    assert engine.predict("onion", "2026-11-14")["prediction"] > 0

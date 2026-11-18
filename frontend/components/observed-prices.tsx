@@ -13,6 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import snapshot from "@/lib/kamis-prices.json";
+import backtest from "@/lib/kamis-backtest.json";
 import { won } from "@/lib/utils";
 import styles from "./observed-prices.module.css";
 
@@ -194,8 +195,48 @@ export default function ObservedPrices() {
             </div>
           </section>
         </div>
+        <section className={`panel ${styles.validation}`} id="forecast-validation" aria-labelledby="validation-title">
+          <div className="panel-heading">
+            <div>
+              <h2 id="validation-title">30일 가격 예측 검증</h2>
+              <p>검증 기준일 {backtest.start} ~ {backtest.end} · 평가 {backtest.overall.count}건</p>
+            </div>
+          </div>
+          <div className={styles.validationBody}>
+            <p>
+              기준 날짜의 가격이 유지된다고 가정하면 평균 오차가 {backtest.overall.baseline.toFixed(2)}%,
+              가격·환율·식품지수를 학습한 XGBoost 모델은 {backtest.overall.model.toFixed(2)}%였습니다.
+              이 검증에서는 가격 유지 기준의 오차가 낮아 장바구니에는 조사 단가를 표시합니다.
+            </p>
+            <div className={styles.validationScroll}>
+              <table className={styles.validationTable}>
+                <thead>
+                  <tr><th>품목</th><th>평가 건수</th><th>가격 유지 오차</th><th>모델 오차</th></tr>
+                </thead>
+                <tbody>
+                  {products.map(({ id, name }) => {
+                    const metric = backtest.products[id as keyof typeof backtest.products];
+                    if (!metric) return null;
+                    return (
+                      <tr key={id}>
+                        <th scope="row">{name}</th><td>{metric.count}</td>
+                        <td>{metric.baseline.toFixed(2)}%</td><td>{metric.model.toFixed(2)}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className={styles.chartNote}>
+              평가 대상은 {backtest.basis}입니다. 실제 가격이 {backtest.minimumObservations}회 이상 관측된 경우를 평가했습니다.
+            </p>
+          </div>
+        </section>
         <footer className={styles.source}>
-          출처 <a href={snapshot.sourceUrl}>{snapshot.source}</a>
+          출처 <a href={snapshot.sourceUrl}>{snapshot.source}</a> ·{" "}
+          <a href="https://data.mafra.go.kr/opendata/data/indexOpenDataDetail.do?data_id=20251017000000002761">과거 소매가격</a> ·{" "}
+          <a href="https://fred.stlouisfed.org/series/DEXKOUS">원/달러 환율</a> ·{" "}
+          <a href="https://www.worldbank.org/en/research/commodity-markets">세계은행 식품지수</a>
         </footer>
       </main>
     </>

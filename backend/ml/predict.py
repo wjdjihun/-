@@ -7,12 +7,19 @@ from ml.feature_engineering import engineer_features
 
 
 class PredictionEngine:
-    def __init__(self, directory: Path, prices: Path):
+    def __init__(self, directory: Path, prices: Path, *, model_name="model_b"):
         # TODO[AI-05] [C/D] 현재 모델 B 파일을 고정 로드합니다. 모델 A 우선 연결 시 명시적인 모델 선택을 추가하세요.
         # Load only trusted, locally generated artifacts. Never unpickle visitor uploads.
-        self.bundle = joblib.load(directory / "model_b.joblib")
+        if model_name not in {"model_a", "model_b"}:
+            raise ValueError("지원하지 않는 모델입니다.")
+        self.bundle = joblib.load(directory / f"{model_name}.joblib")
+        self.feature_options = self.bundle.get("feature_options", {})
         self.metrics = json.loads((directory / "metrics.json").read_text())
-        self.source = load_prices(prices, allow_demo=self.bundle["data_mode"] == "demo")
+        self.source = load_prices(
+            prices,
+            allow_demo=self.bundle["data_mode"] == "demo",
+            include_news=self.feature_options.get("include_news", True),
+        )
 
     def predict(self, product_id: str, as_of: str):
         cutoff = pd.Timestamp(as_of)
@@ -28,7 +35,7 @@ class PredictionEngine:
             str(source[k].iloc[-1]) != v for k, v in metadata.items()
         ):
             raise ValueError("학습 시 품목 규격·등급·지역과 추론 데이터가 다릅니다.")
-        features = engineer_features(source, include_target=False)
+        features = engineer_features(source, include_target=False, **self.feature_options)
         row = features[features["date"] == cutoff].copy()
         if row.empty:
             raise ValueError("예측 기준일의 과거 30일 피처가 부족합니다.")

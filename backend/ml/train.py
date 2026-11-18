@@ -15,11 +15,16 @@ from ml.feature_engineering import (
 from ml.evaluate import evaluate
 
 
-def train(path: Path, output: Path, allow_demo=False):
+def train(path: Path, output: Path, allow_demo=False, *, model_a_only=False):
     # TODO[AI-04] [C] 학습 파이프라인은 구현됨. 실제 정규화 CSV로 학습·평가하고 산출물과 재현 설정을 전달하세요.
     # data/demo/training.csv 결과는 합성 자료의 실행 검증이며 실제 모델 성능이 아닙니다.
-    source = load_prices(path, allow_demo=allow_demo)
-    frame = engineer_features(source)
+    feature_options = {
+        "include_news": not model_a_only,
+        "lag_tolerance_days": 3 if model_a_only else 0,
+        "min_target_observations": 3 if model_a_only else 7,
+    }
+    source = load_prices(path, allow_demo=allow_demo, include_news=not model_a_only)
+    frame = engineer_features(source, **feature_options)
     training, validation, test = time_split(frame)
     identity = sorted(
         c for c in frame if c.startswith("product_") and c != "product_id"
@@ -47,14 +52,16 @@ def train(path: Path, output: Path, allow_demo=False):
                 ("test", test),
             ]
         },
-        "target": "mean retail price on days +27 through +33",
+        "target": "mean observed retail price on days +27 through +33",
+        "min_target_observations": feature_options["min_target_observations"],
         "horizon_days": 30,
-        "news_window_days": 7,
+        "news_window_days": None if model_a_only else 7,
         "feature_importance": {},
         "training_cutoff": str(source.date.max().date()),
     }
     output.mkdir(parents=True, exist_ok=True)
-    for name, features in [("model_a", a), ("model_b", b)]:
+    models = [("model_a", a)] if model_a_only else [("model_a", a), ("model_b", b)]
+    for name, features in models:
         model = XGBRegressor(
             n_estimators=350,
             max_depth=4,
@@ -72,7 +79,17 @@ def train(path: Path, output: Path, allow_demo=False):
             eval_set=[(validation[features], validation["target"])],
             verbose=False,
         )
-        result["models"][name] = evaluate(test["target"], model.predict(test[features]))
+        test_predictions = model.predict(test[features])
+        result["models"][name] = evaluate(test["target"], test_predictions)
+        if model_a_only:
+            result["product_metrics"] = {
+                product_id: {
+                    "baseline": evaluate(test.loc[mask, "target"], test.loc[mask, "price"]),
+                    "model_a": evaluate(test.loc[mask, "target"], test_predictions[mask]),
+                }
+                for product_id in sorted(test.product_id.unique())
+                if (mask := (test.product_id == product_id).to_numpy()).any()
+            }
         # Fit interval radii on validation only; test labels never tune the model or interval.
         # TODO[AI-06] [C] 실제 자료로 예측 범위의 테스트 포함률·품목별 지표를 확인하세요. 포함 확률을 보장하지 않습니다.
         residual = np.abs(
@@ -87,6 +104,7 @@ def train(path: Path, output: Path, allow_demo=False):
             {
                 "model": model,
                 "features": features,
+                "feature_options": feature_options,
                 "radius": radius,
                 "product_radius": per_product,
                 "data_mode": result["data_mode"],
@@ -98,7 +116,7 @@ def train(path: Path, output: Path, allow_demo=False):
             },
             output / f"{name}.joblib",
         )
-        if name == "model_b":
+        if name == "model_b" or model_a_only:
             result["feature_importance"] = dict(
                 sorted(
                     zip(features, map(float, model.feature_importances_)),
@@ -125,9 +143,10 @@ def train(path: Path, output: Path, allow_demo=False):
                 }
                 for (_, row), estimate in zip(subset.iterrows(), estimates)
             ]
-    result["news_improvement_mape"] = (
-        result["models"]["model_a"]["MAPE"] - result["models"]["model_b"]["MAPE"]
-    )
+    if not model_a_only:
+        result["news_improvement_mape"] = (
+            result["models"]["model_a"]["MAPE"] - result["models"]["model_b"]["MAPE"]
+        )
     (output / "metrics.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2)
     )
@@ -141,8 +160,9 @@ if __name__ == "__main__":
     parser.add_argument("--data", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=Path("ml/artifacts"))
     parser.add_argument("--allow-demo", action="store_true")
+    parser.add_argument("--model-a-only", action="store_true")
     args = parser.parse_args()
-    result = train(args.data, args.output, args.allow_demo)
+    result = train(args.data, args.output, args.allow_demo, model_a_only=args.model_a_only)
     print(
         json.dumps(
             {

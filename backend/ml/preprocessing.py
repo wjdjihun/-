@@ -24,9 +24,10 @@ REQUIRED = [
 ]
 
 
-def load_prices(path: Path, allow_demo=False):
+def load_prices(path: Path, allow_demo=False, include_news=True):
     df = pd.read_csv(path)
-    missing = sorted(set(REQUIRED) - set(df.columns))
+    required = [name for name in REQUIRED if include_news or not name.startswith("news_")]
+    missing = sorted(set(required) - set(df.columns))
     if missing:
         raise ValueError("누락된 열: " + ", ".join(missing))
     if not set(df["data_mode"].unique()) <= (
@@ -67,6 +68,7 @@ def load_prices(path: Path, allow_demo=False):
         "news_supply",
         "news_demand",
     ]
+    numeric = [name for name in numeric if name in required]
     df[numeric] = df[numeric].apply(pd.to_numeric, errors="raise")
     if not np.isfinite(df[numeric].to_numpy()).all() or (df["price"] <= 0).any():
         raise ValueError("유효한 수치와 양수 가격이 필요합니다.")
