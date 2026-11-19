@@ -7,6 +7,7 @@ import AnnualPriceCharts from "./annual-price-charts";
 import EconomicNews from "./economic-news";
 import snapshot from "@/lib/kamis-grocery-prices.json";
 import monthlyForecasts from "@/lib/kamis-selectable-months.json";
+import adaptiveForecasts from "@/lib/kamis-adaptive-months.json";
 import { percent } from "@/lib/utils";
 import styles from "./observed-prices.module.css";
 
@@ -26,7 +27,14 @@ type ForecastMonth = {
 };
 
 const forecasts: Record<string, ForecastMonth> = monthlyForecasts as Record<string, ForecastMonth>;
-const availableMonths = Object.keys(forecasts);
+type AdaptiveForecast = {
+  estimate: number | null;
+  method: "adaptive" | "previous" | "seasonal" | "unavailable";
+  previousWeight: number | null;
+};
+
+const adaptive: Record<string, { fitMonth: string | null; trainingCount: number; products: Record<string, AdaptiveForecast> }> = adaptiveForecasts as Record<string, { fitMonth: string | null; trainingCount: number; products: Record<string, AdaptiveForecast> }>;
+const availableMonths = Object.keys(adaptive);
 const years = [...new Set(availableMonths.map((month) => month.slice(0, 4)))];
 const products = snapshot.products;
 const initialQuantities = Object.fromEntries(products.map(({ id }) => [id, 1]));
@@ -36,7 +44,8 @@ const currency = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 });
 const priceText = (price: number | null) => price === null ? "자료 부족" : `${currency.format(price)}원`;
 const monthLabel = (month: string) => `${month.slice(0, 4)}년 ${Number(month.slice(5))}월`;
 const methodLabel = {
-  xgboost: "XGBoost",
+  adaptive: "가변 가중치",
+  previous: "전월 평균",
   seasonal: "과거 동월 평균",
   unavailable: "예측 자료 부족",
 };
@@ -62,7 +71,8 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
   const [quantities, setQuantities] = useState(initialQuantities);
   const [ready, setReady] = useState(false);
   const [month, setMonth] = useState("2026-06");
-  const result = forecasts[month];
+  const reference = forecasts[month];
+  const result = adaptive[month];
   const title = monthLabel(month);
   const year = month.slice(0, 4);
   const monthsForYear = availableMonths.filter((value) => value.startsWith(year));
@@ -71,6 +81,8 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
     const prior = product.history.filter(({ date }) => date.startsWith(previousMonth));
     return {
       ...product,
+      ...reference.products[product.id],
+      baselineForecast: reference.products[product.id].estimate,
       ...result.products[product.id],
       quantity: quantities[product.id] ?? 0,
       priorActual: prior.length >= 3 ? prior.reduce((sum, point) => sum + point.price, 0) / prior.length : null,
@@ -170,7 +182,7 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
           <section className={`panel ${styles.monthPicker}`} aria-label="예측 대상 월 선택">
             <div>
               <h1>월별 식자재 가격 예측</h1>
-              <p>{snapshot.market} · {snapshot.grade} 등급 · {result.asOf}까지의 자료로 예측</p>
+              <p>{snapshot.market} · {snapshot.grade} 등급 · {reference.asOf}까지의 자료로 예측</p>
             </div>
             <div className={styles.monthControls}>
               <label>
@@ -290,35 +302,41 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
             <div className="panel-heading">
               <div>
                 <h2 id="july-validation-title">{title} 예측 검증</h2>
-                <p>선택한 달의 실측은 오차 계산에 사용합니다. 예측에는 {result.asOf}까지의 자료를 사용합니다.</p>
+                <p>선택한 달의 실측은 오차 계산에 사용합니다. 예측에는 {reference.asOf}까지의 자료를 사용합니다.</p>
               </div>
             </div>
             <div className={styles.validationBody}>
               <div className={styles.validationScroll}>
                 <table className={styles.validationTable}>
                   <thead>
-                    <tr><th scope="col">품목</th><th scope="col">예측 방식</th><th scope="col">예상 평균</th><th scope="col">실제 평균</th><th scope="col">절대오차</th><th scope="col">전월 평균 기준 오차</th></tr>
+                    <tr><th scope="col">품목</th><th scope="col">예측 방식</th><th scope="col">예상 평균</th><th scope="col">실제 평균</th><th scope="col">절대오차</th><th scope="col">기존 예측 오차</th></tr>
                   </thead>
                   <tbody>
-                    {rows.map(({ id, name, estimate, method, seasonalYears, actual, observations, previousMean }) => {
+                    {rows.map(({ id, name, estimate, method, seasonalYears, actual, observations, previousWeight, baselineForecast }) => {
                       const error = estimate !== null && actual !== null && observations >= 3 ? Math.abs(estimate - actual) : null;
                       return (
                         <tr key={id}>
                           <th scope="row">{name}</th>
-                          <td>{methodLabel[method]}{seasonalYears.length ? ` (${[...seasonalYears].reverse().join("·")}년)` : ""}</td>
+                          <td>
+                              {methodLabel[method]}
+                              {method === "adaptive" && previousWeight !== null && (
+                                <div>전월 {(previousWeight * 100).toFixed(1)}% · 동월 {((1 - previousWeight) * 100).toFixed(1)}%</div>
+                              )}
+                              {method === "seasonal" && seasonalYears.length > 0 && ` (${[...seasonalYears].reverse().join("·")}년)`}
+                            </td>
                           <td>{priceText(estimate)}</td>
                           <td>{actual === null ? "실측 자료 없음" : `${priceText(actual)} (${observations}일)`}</td>
                           <td>{error === null || actual === null ? "—" : `${priceText(error)} (${(100 * error / actual).toFixed(2)}%)`}</td>
-                          <td>{previousMean === null || actual === null || observations < 3 ? "—" : `${(100 * Math.abs(previousMean - actual) / actual).toFixed(2)}%`}</td>
+                          <td>{baselineForecast === null || actual === null || observations < 3 ? "—" : `${(100 * Math.abs(baselineForecast - actual) / actual).toFixed(2)}%`}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
-              <p>전월 관측이 3일 이상이면 XGBoost를 사용합니다. 전월 자료가 부족하면 최근 4개년 중 관측이 3일 이상인 같은 달의 연도별 평균을 같은 비중으로 합산합니다.</p>
-              <p>실측이 3일 이상인 품목의 오차를 표시합니다. {result.trainingCount > 0 && `이 달의 XGBoost 학습 사례는 ${result.trainingCount}건입니다.`}</p>
-              <a className={styles.demoLink} href="/downloads/kamis-grocery-monthly-model.zip" download>6품목 월평균 모델과 학습 데이터 다운로드</a>
+              <p>최근 가격 변동과 전월·과거 동월 가격 차이를 보고 가중치를 계산합니다. 기준 가격 하나가 부족하면 확보한 평균을 사용합니다.</p>
+              <p>실측이 3일 이상인 품목의 오차를 표시합니다. {result.fitMonth && `가중치 학습 자료는 ${monthLabel(result.fitMonth)}까지의 ${result.trainingCount}건입니다.`}</p>
+              <a className={styles.demoLink} href="/downloads/kamis-adaptive-model.zip" download>가변 가중치 모델과 검증 자료 다운로드</a>
             </div>
           </section>
         )}
