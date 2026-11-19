@@ -335,7 +335,7 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
                 </table>
               </div>
               <p>최근 가격 변동과 전월·과거 동월 가격 차이를 보고 가중치를 계산합니다. 기준 가격 하나가 부족하면 확보한 평균을 사용합니다.</p>
-              <p>실측이 3일 이상인 품목의 오차를 표시합니다. {result.fitMonth && `가중치 학습 자료는 ${monthLabel(result.fitMonth)}까지의 ${result.trainingCount}건입니다.`}</p>
+              <p>실측이 3일 이상인 품목의 오차를 표시합니다. {result.fitMonth && `가중치 학습에 ${monthLabel(result.fitMonth)}까지 확보한 유효 자료 ${result.trainingCount}건을 사용했습니다.`}</p>
               <a className={styles.demoLink} href="/downloads/kamis-adaptive-model.zip" download>가변 가중치 모델과 검증 자료 다운로드</a>
             </div>
           </section>

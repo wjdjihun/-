@@ -108,7 +108,7 @@ def metrics(cases, column):
 
 
 
-def export_site(prices, forecasts, frozen_rule, output):
+def export_site(prices, forecasts, output):
     cases = build_cases(prices, forecasts, include_forecasts=True)
     eligible = cases.dropna(subset=["previous", "seasonal", "actual"])
     latest = prices["date"].max().to_period("M")
@@ -119,8 +119,6 @@ def export_site(prices, forecasts, frozen_rule, output):
         rows = cases.loc[cases["month"].eq(target)]
         if target > latest:
             rule = full_rule
-        elif target > CALIBRATION_END:
-            rule = frozen_rule
         else:
             historical = eligible.loc[eligible["month"].lt(target)]
             rule = fit_rule(historical, target - 1) if len(historical) >= 24 else None
@@ -153,6 +151,25 @@ def export_site(prices, forecasts, frozen_rule, output):
             "products": products,
         }
 
+    evaluation = cases.loc[cases["actual"].notna() & cases["month"].gt(CALIBRATION_END)].copy()
+    evaluation["adaptive"] = [
+        release[str(month)]["products"][product]["estimate"]
+        for month, product in zip(evaluation["month"], evaluation["product"])
+    ]
+    evaluation["fit_month"] = [release[str(month)]["fitMonth"] for month in evaluation["month"]]
+    evaluation["training_count"] = [release[str(month)]["trainingCount"] for month in evaluation["month"]]
+    for name in ("site", "adaptive"):
+        evaluation[f"{name}_error_pct"] = (evaluation[name] - evaluation["actual"]).abs() / evaluation["actual"] * 100
+    evaluation.to_csv(output / "rolling-monthly-comparison.csv", index=False, float_format="%.8f")
+    matched = evaluation.dropna(subset=["site", "adaptive"])
+    evaluation_summary = {
+        "matched": {name: metrics(matched, name) for name in ("site", "adaptive")},
+        "june": {
+            str(month): {name: metrics(group, name) for name in ("site", "adaptive")}
+            for month, group in matched[matched["month"].dt.month.eq(6)].groupby("month")
+        },
+    }
+    (output / "rolling-evaluation-summary.json").write_text(json.dumps(evaluation_summary, indent=2) + "\n")
     (output / "adaptive-model-full.json").write_text(json.dumps(full_rule, indent=2) + "\n")
     (ROOT / "frontend/lib/kamis-adaptive-months.json").write_text(
         json.dumps(release, separators=(",", ":")) + "\n"
@@ -192,7 +209,7 @@ def main():
     (args.output / "evaluation-summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     tests.to_csv(args.output / "monthly-comparison.csv", index=False, float_format="%.8f")
     if args.export_site:
-        export_site(prices, forecasts, rule, args.output)
+        export_site(prices, forecasts, args.output)
     print(json.dumps(summary, indent=2))
 
 
