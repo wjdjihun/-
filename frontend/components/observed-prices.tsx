@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Activity, ArrowUpRight, Layers3, Minus, Newspaper, Plus, Radar, ShoppingBasket, TrendingUp } from "lucide-react";
 import AnnualPriceCharts from "./annual-price-charts";
 import EconomicNews from "./economic-news";
@@ -76,6 +76,7 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
   const display = (id: typeof tab) => !tabbed || tab === id;
 
   const [quantities, setQuantities] = useState(initialQuantities);
+  const pendingCartFocus = useRef<string | null>(null);
   const [ready, setReady] = useState(false);
   const [month, setMonth] = useState("2026-06");
   const reference = forecasts[month];
@@ -138,6 +139,13 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
       // The current session still retains the quantities.
     }
   }, [quantities, ready]);
+
+  useLayoutEffect(() => {
+    const target = pendingCartFocus.current;
+    if (target === null) return;
+    pendingCartFocus.current = null;
+    document.getElementById(target)?.focus();
+  }, [quantities]);
 
   useEffect(() => {
     if (!tabbed) return;
@@ -243,7 +251,14 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
             <div className={styles.basket}>
               <div className={styles.addItems} aria-label="장바구니에 담을 수 있는 품목">
                 {rows.filter(({ quantity }) => !quantity).map(({ id, name, unit }) => (
-                  <button key={id} type="button" className={styles.yearButton} aria-label={`${name} 장바구니에 담기`} onClick={() => updateQuantity(id, 1)}>
+                  <button
+                    key={id} id={`add-item-${id}`} type="button" className={styles.yearButton}
+                    aria-label={`${name} 장바구니에 담기`}
+                    onClick={(event) => {
+                      if (document.activeElement === event.currentTarget) pendingCartFocus.current = `quantity-${id}`;
+                      updateQuantity(id, 1);
+                    }}
+                  >
                     <Plus size={14} aria-hidden="true" /> {name} · {unit}
                   </button>
                 ))}
@@ -284,7 +299,15 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
                     </button>
                   </div>
                   <strong>{priceText(estimate === null ? null : estimate * quantity)}</strong>
-                  <button type="button" className={styles.removeItem} aria-label={`${name} 장바구니에서 빼기`} onClick={() => removeItem(id)}>빼기</button>
+                  <button
+                    type="button" className={styles.removeItem} aria-label={`${name} 장바구니에서 빼기`}
+                    onClick={(event) => {
+                      if (document.activeElement === event.currentTarget) pendingCartFocus.current = `add-item-${id}`;
+                      removeItem(id);
+                    }}
+                  >
+                    빼기
+                  </button>
                 </div>
               ))}
               <div className={styles.total} aria-live="polite">

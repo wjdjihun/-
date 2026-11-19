@@ -1,7 +1,7 @@
 # PriceRadar AI · 여기부터 읽어주세요
 
 이 압축 파일은 지금까지 구현한 전체 소스와 API·AI 연동 작업 표시를 포함합니다.
-실제 API 키나 실제 데이터로 학습한 모델은 포함하지 않습니다. 기본 데모는 키 없이 실행됩니다.
+정적 웹앱용 실제 KAMIS 예측 결과와 검증용 모델 자료가 포함되어 있습니다. API 키 등록과 Python 서버 실행 없이 웹앱을 확인할 수 있습니다.
 
 ## 먼저 열 파일
 
@@ -34,7 +34,7 @@
 | C    | 가격 모델 학습·평가         | `AI-02`, `AI-03`, `AI-04`, `AI-05` |
 | D    | FastAPI·화면 연결·배포      | `APP-01`, `APP-03`, `OPS-01`       |
 
-## 데모를 먼저 실행하기
+## 웹앱과 로컬 API 실행하기
 
 Node.js 22+, Python 3.12+를 준비하고 압축을 푼 `price-radar-ai/`에서 실행합니다.
 
@@ -64,10 +64,9 @@ cd backend
 - 서버 확인: http://localhost:8001/api/health
 - Windows에서는 `.venv\Scripts\activate`로 가상환경을 활성화하고 `backend/`에서 `python -m uvicorn app.main:app --reload --port 8001`을 실행합니다.
 
-백엔드 없이 화면만 보려면 `.env`의 `NEXT_PUBLIC_API_URL=`을 비우고 프론트엔드를 다시 실행합니다.
-기존 게시 사이트는 이 독립 정적 데모 방식이며, FastAPI 서버는 별도 실행이 필요합니다.
+게시 사이트의 화면을 확인하려면 프론트엔드만 실행하면 됩니다. 로컬 FastAPI를 시험할 경우에만 별도로 실행하세요.
 
-## 실제 연동을 시작할 순서
+## 로컬 API 연동을 시작할 순서
 
 1. `docs/product_mapping.template.csv`의 배추 한 행을 실제 API 응답으로 확정합니다.
 2. 루트 `.env`에 KAMIS 인증 ID·키를 설정합니다. 공개 저장소에는 `.env`를 올리지 않습니다.
