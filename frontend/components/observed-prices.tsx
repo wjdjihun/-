@@ -31,9 +31,16 @@ type AdaptiveForecast = {
   estimate: number | null;
   method: "adaptive" | "previous" | "seasonal" | "unavailable";
   previousWeight: number | null;
+  validationEstimate: number | null;
 };
 
-const adaptive: Record<string, { fitMonth: string | null; trainingCount: number; products: Record<string, AdaptiveForecast> }> = adaptiveForecasts as Record<string, { fitMonth: string | null; trainingCount: number; products: Record<string, AdaptiveForecast> }>;
+type AdaptiveMonth = {
+  validationFitMonth: string | null;
+  validationTrainingCount: number;
+  products: Record<string, AdaptiveForecast>;
+};
+
+const adaptive = adaptiveForecasts.months as Record<string, AdaptiveMonth>;
 const availableMonths = Object.keys(adaptive);
 const years = [...new Set(availableMonths.map((month) => month.slice(0, 4)))];
 const products = snapshot.products;
@@ -182,7 +189,7 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
           <section className={`panel ${styles.monthPicker}`} aria-label="예측 대상 월 선택">
             <div>
               <h1>월별 식자재 가격 예측</h1>
-              <p>{snapshot.market} · {snapshot.grade} 등급 · {reference.asOf}까지의 자료로 예측</p>
+              <p>{snapshot.market} · {snapshot.grade} 등급 · 모델 학습 {monthLabel(adaptiveForecasts.fitMonth)}까지</p>
             </div>
             <div className={styles.monthControls}>
               <label>
@@ -301,19 +308,19 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
           <section className={`panel ${styles.validation}`} id="july-validation" aria-labelledby="july-validation-title">
             <div className="panel-heading">
               <div>
-                <h2 id="july-validation-title">{title} 예측 검증</h2>
-                <p>선택한 달의 실측은 오차 계산에 사용합니다. 예측에는 {reference.asOf}까지의 자료를 사용합니다.</p>
+                <h2 id="july-validation-title">{title} 서비스 예측과 검증</h2>
+                <p>서비스는 전체 자료로 학습한 모델을 사용합니다. 과거 월의 성능은 해당 월 이전 자료로 학습한 검증용 예측으로 계산합니다.</p>
               </div>
             </div>
             <div className={styles.validationBody}>
               <div className={styles.validationScroll}>
                 <table className={styles.validationTable}>
                   <thead>
-                    <tr><th scope="col">품목</th><th scope="col">예측 방식</th><th scope="col">예상 평균</th><th scope="col">실제 평균</th><th scope="col">절대오차</th><th scope="col">기존 예측 오차</th></tr>
+                    <tr><th scope="col">품목</th><th scope="col">서비스 예측 방식</th><th scope="col">서비스 예측</th><th scope="col">검증용 예측</th><th scope="col">실제 평균</th><th scope="col">검증 오차</th><th scope="col">기존 예측 오차</th></tr>
                   </thead>
                   <tbody>
-                    {rows.map(({ id, name, estimate, method, seasonalYears, actual, observations, previousWeight, baselineForecast }) => {
-                      const error = estimate !== null && actual !== null && observations >= 3 ? Math.abs(estimate - actual) : null;
+                    {rows.map(({ id, name, estimate, method, seasonalYears, actual, observations, previousWeight, baselineForecast, validationEstimate }) => {
+                      const error = validationEstimate !== null && actual !== null && observations >= 3 ? Math.abs(validationEstimate - actual) : null;
                       return (
                         <tr key={id}>
                           <th scope="row">{name}</th>
@@ -325,6 +332,7 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
                               {method === "seasonal" && seasonalYears.length > 0 && ` (${[...seasonalYears].reverse().join("·")}년)`}
                             </td>
                           <td>{priceText(estimate)}</td>
+                          <td>{validationEstimate === null ? "—" : priceText(validationEstimate)}</td>
                           <td>{actual === null ? "실측 자료 없음" : `${priceText(actual)} (${observations}일)`}</td>
                           <td>{error === null || actual === null ? "—" : `${priceText(error)} (${(100 * error / actual).toFixed(2)}%)`}</td>
                           <td>{baselineForecast === null || actual === null || observations < 3 ? "—" : `${(100 * Math.abs(baselineForecast - actual) / actual).toFixed(2)}%`}</td>
@@ -335,7 +343,10 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
                 </table>
               </div>
               <p>최근 가격 변동과 전월·과거 동월 가격 차이를 보고 가중치를 계산합니다. 기준 가격 하나가 부족하면 확보한 평균을 사용합니다.</p>
-              <p>실측이 3일 이상인 품목의 오차를 표시합니다. {result.fitMonth && `가중치 학습에 ${monthLabel(result.fitMonth)}까지 확보한 유효 자료 ${result.trainingCount}건을 사용했습니다.`}</p>
+              <p>서비스 모델은 {monthLabel(adaptiveForecasts.fitMonth)}까지의 유효 사례 {adaptiveForecasts.trainingCount}건으로 학습했습니다.</p>
+              {result.validationFitMonth && (
+                <p>검증 모델은 {reference.asOf}까지의 유효 사례 {result.validationTrainingCount}건으로 학습했습니다. 실측이 3일 이상인 품목의 검증 오차를 표시합니다.</p>
+              )}
               <a className={styles.demoLink} href="/downloads/kamis-adaptive-model.zip" download>가변 가중치 모델과 검증 자료 다운로드</a>
             </div>
           </section>

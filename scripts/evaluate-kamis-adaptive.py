@@ -113,29 +113,26 @@ def export_site(prices, forecasts, output):
     eligible = cases.dropna(subset=["previous", "seasonal", "actual"])
     latest = prices["date"].max().to_period("M")
     full_rule = fit_rule(eligible, latest)
+    full_estimates, full_weights = predict(cases, full_rule)
     release = {}
     for month in forecasts:
         target = pd.Period(month, freq="M")
         rows = cases.loc[cases["month"].eq(target)]
-        if target > latest:
-            rule = full_rule
-        else:
-            historical = eligible.loc[eligible["month"].lt(target)]
-            rule = fit_rule(historical, target - 1) if len(historical) >= 24 else None
-
+        historical = eligible.loc[eligible["month"].lt(target)]
+        rule = fit_rule(historical, target - 1) if rows["actual"].notna().any() and len(historical) >= 24 else None
         if rule:
-            estimates, weights = predict(rows, rule)
+            estimates, _ = predict(rows, rule)
         else:
             estimates = rows["previous"].combine_first(rows["seasonal"])
-            weights = rows["previous"].notna().astype(float)
         products = {}
         for index, row in rows.iterrows():
-            estimate = estimates.loc[index]
-            weight = weights.loc[index]
+            estimate = full_estimates.loc[index]
+            weight = full_weights.loc[index]
+            validation_estimate = estimates.loc[index] if pd.notna(row.actual) else np.nan
             previous = pd.notna(row.previous)
             seasonal = pd.notna(row.seasonal)
             method = (
-                "adaptive" if rule and previous and seasonal
+                "adaptive" if previous and seasonal
                 else "previous" if previous
                 else "seasonal" if seasonal
                 else "unavailable"
@@ -144,20 +141,21 @@ def export_site(prices, forecasts, output):
                 "estimate": round(float(estimate), 2) if pd.notna(estimate) else None,
                 "method": method,
                 "previousWeight": round(float(weight), 4) if pd.notna(estimate) else None,
+                "validationEstimate": round(float(validation_estimate), 2) if pd.notna(validation_estimate) else None,
             }
         release[month] = {
-            "fitMonth": rule["last_calibration_month"] if rule else None,
-            "trainingCount": rule["calibration_cases"] if rule else 0,
+            "validationFitMonth": rule["last_calibration_month"] if rule and target <= latest else None,
+            "validationTrainingCount": rule["calibration_cases"] if rule and target <= latest else 0,
             "products": products,
         }
 
     evaluation = cases.loc[cases["actual"].notna() & cases["month"].gt(CALIBRATION_END)].copy()
     evaluation["adaptive"] = [
-        release[str(month)]["products"][product]["estimate"]
+        release[str(month)]["products"][product]["validationEstimate"]
         for month, product in zip(evaluation["month"], evaluation["product"])
     ]
-    evaluation["fit_month"] = [release[str(month)]["fitMonth"] for month in evaluation["month"]]
-    evaluation["training_count"] = [release[str(month)]["trainingCount"] for month in evaluation["month"]]
+    evaluation["fit_month"] = [release[str(month)]["validationFitMonth"] for month in evaluation["month"]]
+    evaluation["training_count"] = [release[str(month)]["validationTrainingCount"] for month in evaluation["month"]]
     for name in ("site", "adaptive"):
         evaluation[f"{name}_error_pct"] = (evaluation[name] - evaluation["actual"]).abs() / evaluation["actual"] * 100
     evaluation.to_csv(output / "rolling-monthly-comparison.csv", index=False, float_format="%.8f")
@@ -172,7 +170,7 @@ def export_site(prices, forecasts, output):
     (output / "rolling-evaluation-summary.json").write_text(json.dumps(evaluation_summary, indent=2) + "\n")
     (output / "adaptive-model-full.json").write_text(json.dumps(full_rule, indent=2) + "\n")
     (ROOT / "frontend/lib/kamis-adaptive-months.json").write_text(
-        json.dumps(release, separators=(",", ":")) + "\n"
+        json.dumps({"fitMonth": str(latest), "trainingCount": len(eligible), "months": release}, separators=(",", ":")) + "\n"
     )
 
 def main():
