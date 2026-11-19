@@ -61,7 +61,7 @@
 
 .basketRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 60px minmax(60px, auto);
+  grid-template-columns: minmax(0, 1fr) auto max-content auto;
   align-items: center;
   gap: 12px;
   padding: 14px 0;
@@ -79,6 +79,67 @@
   padding: 4px 7px;
   border: 1px solid #b4c1d4;
   border-radius: 6px;
+}
+
+.addItems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.addItems:empty {
+  display: none;
+}
+
+.quantityControl {
+  display: grid;
+  grid-template-columns: 30px 48px 30px;
+  gap: 4px;
+}
+
+.quantityControl button,
+.removeItem {
+  min-height: 34px;
+  border: 1px solid #c6d0df;
+  border-radius: 6px;
+  background: #fff;
+  color: #243753;
+}
+
+.quantityControl button {
+  display: grid;
+  place-items: center;
+}
+
+.quantityControl button:disabled {
+  opacity: 0.4;
+}
+
+.quantityControl input {
+  text-align: center;
+  appearance: textfield;
+}
+
+.quantityControl input::-webkit-inner-spin-button,
+.quantityControl input::-webkit-outer-spin-button {
+  appearance: none;
+}
+
+.removeItem {
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .basketRow {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 7px;
+  }
+
+  .basketRow label {
+    grid-column: 1 / -1;
+  }
 }
 
 .basketRow > strong {
@@ -260,14 +321,11 @@
   gap: 7px;
 }
 
-.gapSwatch,
 .forecastSwatch {
-  width: 18px;
-  border-top: 2px dashed #55647a;
-}
-
-.forecastSwatch {
-  border-top-color: #bd5f18;
+  width: 9px;
+  height: 9px;
+  background: #bd5f18;
+  border-radius: 50%;
 }
 
 .yearlyGrid {

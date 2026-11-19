@@ -1,5 +1,6 @@
 """Fit next-calendar-month price models and export selectable forecasts."""
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -46,7 +47,7 @@ def monthly_features(source):
     )
 
 
-def run_forecast(frame, target):
+def run_forecast(frame, target, *, model_path=None):
     inputs = frame.columns.difference(["product", "target", "actual", "count"])
     # Only targets completed before the forecast month enter training.
     train = frame.loc[(frame["target"] < target) & frame["actual"].notna()]
@@ -57,6 +58,8 @@ def run_forecast(frame, target):
         n_estimators=120, max_depth=2, learning_rate=0.035, n_jobs=2, random_state=42,
     )
     model.fit(train[inputs], train["actual"])
+    if model_path is not None:
+        model.save_model(model_path)
     estimates = model.predict(current[inputs])
     return {
         row.product: {
@@ -68,7 +71,7 @@ def run_forecast(frame, target):
     }, len(train)
 
 
-def selectable_forecasts(source, latest_month):
+def selectable_forecasts(source, latest_month, *, model_path=None):
     monthly = source.groupby(["product_id", source["date"].dt.to_period("M")])["price"].agg(["mean", "count"])
     product_ids = sorted(source["product_id"].unique())
     months = {}
@@ -80,7 +83,9 @@ def selectable_forecasts(source, latest_month):
         if target <= latest_month + 1:
             features = monthly_features(known)
             if features["target"].eq(target).any():
-                predictions, training_count = run_forecast(features, target)
+                predictions, training_count = run_forecast(
+                    features, target, model_path=model_path if target == latest_month + 1 else None,
+                )
 
         products = {}
         for product in product_ids:
@@ -97,12 +102,15 @@ def selectable_forecasts(source, latest_month):
                 round(float(np.mean([value for _, value in historical_means])), 2)
                 if historical_means else None
             )
+            previous = monthly.loc[(product, target - 1)] if (product, target - 1) in monthly.index else None
             products[product] = {
                 "estimate": estimate,
                 "method": "xgboost" if forecast else ("seasonal" if estimate is not None else "unavailable"),
                 "seasonalYears": [int(month.year) for month, _ in historical_means] if not forecast else [],
                 "actual": round(float(actual["mean"]), 2) if actual is not None else None,
                 "observations": int(actual["count"]) if actual is not None else 0,
+                "previousMean": round(float(previous["mean"]), 2)
+                if previous is not None and previous["count"] >= 3 else None,
             }
         months[str(target)] = {
             "asOf": str(cutoff.date()),
@@ -113,28 +121,20 @@ def selectable_forecasts(source, latest_month):
 
 
 def main():
-    archive_path = root / "frontend/public/downloads/kamis-five-year-model.zip"
-    with TemporaryDirectory() as tmp, ZipFile(archive_path) as archive:
-        source = load_prices(Path(archive.extract("prices.csv", tmp)), include_news=False)
-    target = pd.Period("2026-07", freq="M")
-    source = source.loc[source["date"] < target.start_time]
-    data = monthly_features(source)
-    forecast, training_count = run_forecast(data, target)
-    prior_july, validation_count = run_forecast(data, target - 12)
-    if set(forecast) != set(prior_july) or not all("actual" in value for value in prior_july.values()):
-        raise ValueError("July comparison requires an actual price for each forecast product")
-    result = {
-        "month": str(target),
-        "comparisonMonth": str(target - 12),
-        "trainingCount": training_count,
-        "validationCount": validation_count,
-        "prices": {product: result["forecast"] for product, result in forecast.items()},
-        "priorJuly": prior_july,
-    }
-    output = root / "frontend/lib/kamis-monthly.json"
-    output.write_text(json.dumps(result, indent=2) + "\n")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--prices", type=Path, help="Prepared KAMIS retail CSV")
+    parser.add_argument("--model", type=Path, help="Optional export path for the latest monthly XGBoost model")
+    args = parser.parse_args()
+    archive_path = root / "frontend/public/downloads/kamis-grocery-monthly-model.zip"
+    if args.prices:
+        source = load_prices(args.prices, include_news=False)
+    else:
+        with TemporaryDirectory() as tmp, ZipFile(archive_path) as archive:
+            source = load_prices(Path(archive.extract("prices.csv", tmp)), include_news=False)
+    latest_month = source["date"].max().to_period("M")
     selectable = root / "frontend/lib/kamis-selectable-months.json"
-    selectable.write_text(json.dumps(selectable_forecasts(source, target - 1), separators=(",", ":")) + "\n")
+    forecasts = selectable_forecasts(source, latest_month, model_path=args.model)
+    selectable.write_text(json.dumps(forecasts, separators=(",", ":")) + "\n")
 
 
 if __name__ == "__main__":

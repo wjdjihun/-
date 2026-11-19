@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Activity, ArrowUpRight, Layers3, Newspaper, Radar, ShoppingBasket, TrendingUp } from "lucide-react";
+import { Activity, ArrowUpRight, Layers3, Minus, Newspaper, Plus, Radar, ShoppingBasket, TrendingUp } from "lucide-react";
 import AnnualPriceCharts from "./annual-price-charts";
 import EconomicNews from "./economic-news";
-import snapshot from "@/lib/kamis-prices.json";
-import backtest from "@/lib/kamis-backtest.json";
+import snapshot from "@/lib/kamis-grocery-prices.json";
 import monthlyForecasts from "@/lib/kamis-selectable-months.json";
-import { percent, won } from "@/lib/utils";
+import { percent } from "@/lib/utils";
 import styles from "./observed-prices.module.css";
 
 type PriceForecast = {
@@ -17,6 +16,7 @@ type PriceForecast = {
   actual: number | null;
   observations: number;
   seasonalYears: number[];
+  previousMean: number | null;
 };
 
 type ForecastMonth = {
@@ -29,8 +29,9 @@ const forecasts: Record<string, ForecastMonth> = monthlyForecasts as Record<stri
 const availableMonths = Object.keys(forecasts);
 const years = [...new Set(availableMonths.map((month) => month.slice(0, 4)))];
 const products = snapshot.products;
-const initialQuantities = products.map(() => 1);
-const storageKey = "priceradar.observed.quantities.v1";
+const initialQuantities = Object.fromEntries(products.map(({ id }) => [id, 1]));
+const storageKey = "priceradar.observed.quantities.v2";
+const validQuantity = (value: unknown): value is number => typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 999;
 const currency = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 });
 const priceText = (price: number | null) => price === null ? "자료 부족" : `${currency.format(price)}원`;
 const monthLabel = (month: string) => `${month.slice(0, 4)}년 ${Number(month.slice(5))}월`;
@@ -66,16 +67,17 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
   const year = month.slice(0, 4);
   const monthsForYear = availableMonths.filter((value) => value.startsWith(year));
   const previousMonth = `${Number(year) - 1}${month.slice(4)}`;
-  const rows = products.map((product, index) => {
+  const rows = products.map((product) => {
     const prior = product.history.filter(({ date }) => date.startsWith(previousMonth));
     return {
       ...product,
       ...result.products[product.id],
-      quantity: quantities[index],
+      quantity: quantities[product.id] ?? 0,
       priorActual: prior.length >= 3 ? prior.reduce((sum, point) => sum + point.price, 0) / prior.length : null,
     };
   });
-  const unpriced = rows.filter(({ estimate, quantity }) => estimate === null && quantity > 0);
+  const basketRows = rows.filter(({ quantity }) => quantity > 0);
+  const unpriced = basketRows.filter(({ estimate, quantity }) => estimate === null && quantity > 0);
   const forecastTotal = rows.reduce((sum, { estimate, quantity }) => sum + (estimate ?? 0) * quantity, 0);
   const priorTotal = rows.some(({ priorActual, quantity }) => priorActual === null && quantity > 0)
     ? null
@@ -89,11 +91,20 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
   useEffect(() => {
     try {
       const value: unknown = JSON.parse(localStorage.getItem(storageKey) ?? "null");
-      if (
-        Array.isArray(value) &&
-        value.length === products.length &&
-        value.every((n) => Number.isInteger(n) && n >= 0 && n <= 999)
-      ) setQuantities(value);
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        setQuantities(Object.fromEntries(products.flatMap(({ id }) => {
+          const quantity = (value as Record<string, unknown>)[id];
+          return validQuantity(quantity) ? [[id, quantity] as const] : [];
+        })));
+      } else if (value === null) {
+        const previous: unknown = JSON.parse(localStorage.getItem("priceradar.observed.quantities.v1") ?? "null");
+        if (Array.isArray(previous) && previous.length === 3 && validQuantity(previous[1])) {
+          setQuantities({ ...initialQuantities, onion: previous[1] });
+        } else if (Array.isArray(previous) && previous.length === 3 && previous[1] === 0) {
+          const { onion: _onion, ...rest } = initialQuantities;
+          setQuantities(rest);
+        }
+      }
     } catch {
       // The basket also works with browser storage disabled.
     }
@@ -120,10 +131,16 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
     return () => window.removeEventListener("hashchange", syncTab);
   }, [tabbed]);
 
-  function updateQuantity(index: number, value: string) {
-    const quantity = Number(value);
-    if (!Number.isInteger(quantity) || quantity < 0 || quantity > 999) return;
-    setQuantities((previous) => previous.map((n, i) => i === index ? quantity : n));
+  function updateQuantity(id: string, quantity: number) {
+    if (validQuantity(quantity)) setQuantities((current) => ({ ...current, [id]: quantity }));
+  }
+
+  function removeItem(id: string) {
+    setQuantities((current) => {
+      const remaining = { ...current };
+      delete remaining[id];
+      return remaining;
+    });
   }
 
   return (
@@ -205,31 +222,50 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
               </div>
             </div>
             <div className={styles.basket}>
-              <div className={styles.validationScroll}>
-                <table className={styles.validationTable} aria-label="품목별 예상 단가와 작년 대비 증감">
-                  <thead>
-                    <tr><th scope="col">품목</th><th scope="col">{monthLabel(previousMonth)} 실제</th><th scope="col">{title} 예상</th><th scope="col">작년 대비</th></tr>
-                  </thead>
-                  <tbody>
-                    {rows.map(({ id, name, unit, priorActual, estimate }) => (
-                      <tr key={id}>
-                        <th scope="row">{name} · {unit}</th>
-                        <td>{priceText(priorActual)}</td><td>{priceText(estimate)}</td>
-                        <td>{estimate !== null && priorActual !== null ? yearOverYear(estimate, priorActual) : "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className={styles.addItems} aria-label="장바구니에 담을 수 있는 품목">
+                {rows.filter(({ quantity }) => !quantity).map(({ id, name, unit }) => (
+                  <button key={id} type="button" className={styles.yearButton} aria-label={`${name} 장바구니에 담기`} onClick={() => updateQuantity(id, 1)}>
+                    <Plus size={14} aria-hidden="true" /> {name} · {unit}
+                  </button>
+                ))}
               </div>
-              {rows.map(({ id, name, unit, quantity, estimate }, index) => (
+              {basketRows.length === 0 && <p className={styles.forecastNote}>담긴 품목이 없습니다. 위에서 식자재를 담아 주세요.</p>}
+              {basketRows.length > 0 && (
+                <div className={styles.validationScroll}>
+                  <table className={styles.validationTable} aria-label="장바구니 품목별 예상 단가와 작년 대비 증감">
+                    <thead>
+                      <tr><th scope="col">품목</th><th scope="col">{monthLabel(previousMonth)} 실제</th><th scope="col">{title} 예상</th><th scope="col">작년 대비</th></tr>
+                    </thead>
+                    <tbody>
+                      {basketRows.map(({ id, name, unit, priorActual, estimate }) => (
+                        <tr key={id}>
+                          <th scope="row">{name} · {unit}</th>
+                          <td>{priceText(priorActual)}</td><td>{priceText(estimate)}</td>
+                          <td>{estimate !== null && priorActual !== null ? yearOverYear(estimate, priorActual) : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {basketRows.map(({ id, name, unit, quantity, estimate }) => (
                 <div className={styles.basketRow} key={id}>
                   <label htmlFor={`quantity-${id}`}>
                     <strong>{name}</strong><span>월 구매량 · {unit} 단위</span>
                   </label>
-                  <input id={`quantity-${id}`} aria-label={`${name} 월 구매량 (${unit} 단위)`}
-                    type="number" min="0" max="999" step="1" value={quantity}
-                    onChange={(event) => updateQuantity(index, event.currentTarget.value)} />
-                  <strong>{priceText(estimate === null && quantity ? null : (estimate ?? 0) * quantity)}</strong>
+                  <div className={styles.quantityControl}>
+                    <button type="button" aria-label={`${name} 수량 줄이기`} disabled={quantity === 1} onClick={() => updateQuantity(id, quantity - 1)}>
+                      <Minus size={14} aria-hidden="true" />
+                    </button>
+                    <input id={`quantity-${id}`} aria-label={`${name} 월 구매량 (${unit} 단위)`}
+                      type="number" min="1" max="999" step="1" value={quantity}
+                      onChange={(event) => updateQuantity(id, event.currentTarget.valueAsNumber)} />
+                    <button type="button" aria-label={`${name} 수량 늘리기`} disabled={quantity === 999} onClick={() => updateQuantity(id, quantity + 1)}>
+                      <Plus size={14} aria-hidden="true" />
+                    </button>
+                  </div>
+                  <strong>{priceText(estimate === null ? null : estimate * quantity)}</strong>
+                  <button type="button" className={styles.removeItem} aria-label={`${name} 장바구니에서 빼기`} onClick={() => removeItem(id)}>빼기</button>
                 </div>
               ))}
               <div className={styles.total} aria-live="polite">
@@ -247,89 +283,44 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
           </section>
         )}
         {tabbed && tab === "news" && <EconomicNews />}
-        {display("outlook") && <AnnualPriceCharts products={products} showJulyForecast={month === "2026-07"} />}
+        {display("outlook") && <AnnualPriceCharts products={rows} forecastMonth={month} />}
 
         {display("model") && (
-          <>
-            <section className={`panel ${styles.validation}`} id="july-validation" aria-labelledby="july-validation-title">
-              <div className="panel-heading">
-                <div>
-                  <h2 id="july-validation-title">{title} 예측 검증</h2>
-                  <p>선택한 달의 실측은 오차 계산에 사용합니다. 예측에는 {result.asOf}까지의 자료를 사용합니다.</p>
-                </div>
+          <section className={`panel ${styles.validation}`} id="july-validation" aria-labelledby="july-validation-title">
+            <div className="panel-heading">
+              <div>
+                <h2 id="july-validation-title">{title} 예측 검증</h2>
+                <p>선택한 달의 실측은 오차 계산에 사용합니다. 예측에는 {result.asOf}까지의 자료를 사용합니다.</p>
               </div>
-              <div className={styles.validationBody}>
-                <div className={styles.validationScroll}>
-                  <table className={styles.validationTable}>
-                    <thead>
-                      <tr><th scope="col">품목</th><th scope="col">예측 방식</th><th scope="col">예상 평균</th><th scope="col">실제 평균</th><th scope="col">절대오차</th></tr>
-                    </thead>
-                    <tbody>
-                      {rows.map(({ id, name, estimate, method, seasonalYears, actual, observations }) => {
-                        const error = estimate !== null && actual !== null && observations >= 3 ? Math.abs(estimate - actual) : null;
-                        return (
-                          <tr key={id}>
-                            <th scope="row">{name}</th>
-                            <td>{methodLabel[method]}{seasonalYears.length ? ` (${[...seasonalYears].reverse().join("·")}년)` : ""}</td>
-                            <td>{priceText(estimate)}</td>
-                            <td>{actual === null ? "실측 자료 없음" : `${priceText(actual)} (${observations}일)`}</td>
-                            <td>{error === null || actual === null ? "—" : `${priceText(error)} (${(100 * error / actual).toFixed(2)}%)`}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <p>전월 관측이 3일 이상이면 XGBoost를 사용합니다. 전월 자료가 부족하면 최근 4개년 중 관측이 3일 이상인 같은 달의 연도별 평균을 같은 비중으로 합산합니다.</p>
-                <p>실측이 3일 이상인 품목의 오차를 표시합니다. {result.trainingCount > 0 && `이 달의 XGBoost 학습 사례는 ${result.trainingCount}건입니다.`}</p>
+            </div>
+            <div className={styles.validationBody}>
+              <div className={styles.validationScroll}>
+                <table className={styles.validationTable}>
+                  <thead>
+                    <tr><th scope="col">품목</th><th scope="col">예측 방식</th><th scope="col">예상 평균</th><th scope="col">실제 평균</th><th scope="col">절대오차</th><th scope="col">전월 평균 기준 오차</th></tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(({ id, name, estimate, method, seasonalYears, actual, observations, previousMean }) => {
+                      const error = estimate !== null && actual !== null && observations >= 3 ? Math.abs(estimate - actual) : null;
+                      return (
+                        <tr key={id}>
+                          <th scope="row">{name}</th>
+                          <td>{methodLabel[method]}{seasonalYears.length ? ` (${[...seasonalYears].reverse().join("·")}년)` : ""}</td>
+                          <td>{priceText(estimate)}</td>
+                          <td>{actual === null ? "실측 자료 없음" : `${priceText(actual)} (${observations}일)`}</td>
+                          <td>{error === null || actual === null ? "—" : `${priceText(error)} (${(100 * error / actual).toFixed(2)}%)`}</td>
+                          <td>{previousMean === null || actual === null || observations < 3 ? "—" : `${(100 * Math.abs(previousMean - actual) / actual).toFixed(2)}%`}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            </section>
-            <section className={`panel ${styles.validation}`} id="forecast-validation" aria-labelledby="validation-title">
-              <div className="panel-heading">
-                <div>
-                  <h2 id="validation-title">가격 추이 그래프의 30일 예측 검증</h2>
-                  <p>데이터 범위 {backtest.sourceStart} ~ {backtest.sourceEnd} · 실제 관측 {won(backtest.observationCount)}건</p>
-                </div>
-              </div>
-              <div className={styles.validationBody}>
-                <p>
-                  검증 기준일 {backtest.start} ~ {backtest.end} · 평가 {backtest.overall.count}건
-                </p>
-                <p>
-                  기준 날짜의 가격이 유지된다고 가정하면 평균 절대 백분율 오차(MAPE)가 {backtest.overall.baseline.toFixed(2)}%,
-                  가격·환율·식품지수를 학습한 XGBoost 모델은 {backtest.overall.model.toFixed(2)}%였습니다.
-                  이번 검증에서 가격 유지 기준의 오차가 더 낮았습니다. 가격 추이 그래프의 7월 곡선은 이 XGBoost 모델의 결과입니다.
-                </p>
-                <div className={styles.validationScroll}>
-                  <table className={styles.validationTable}>
-                    <thead>
-                      <tr><th>품목</th><th>평가 건수</th><th>가격 유지 오차</th><th>모델 오차</th></tr>
-                    </thead>
-                    <tbody>
-                      {products.map(({ id, name }) => {
-                        const metric = backtest.products[id as keyof typeof backtest.products];
-                        if (!metric) return null;
-                        return (
-                          <tr key={id}>
-                            <th scope="row">{name}</th><td>{metric.count}</td>
-                            <td>{metric.baseline.toFixed(2)}%</td><td>{metric.model.toFixed(2)}%</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <p className={styles.chartNote}>
-                  평가 대상은 {backtest.basis}입니다. {backtest.minimumObservations}회 이상 관측된 경우를 평가했습니다.
-                  {backtest.missingMonth && ` ${backtest.missingMonth} 소매가격에는 자료 공백이 있습니다.`}
-                </p>
-                <p>
-                  전체 기간 재학습 {won(backtest.refitRows)}건 ·{" "}
-                  <a className={styles.demoLink} href="/downloads/kamis-five-year-model.zip" download>30일 모델과 학습 데이터 다운로드</a>
-                </p>
-              </div>
-            </section>
-          </>
+              <p>전월 관측이 3일 이상이면 XGBoost를 사용합니다. 전월 자료가 부족하면 최근 4개년 중 관측이 3일 이상인 같은 달의 연도별 평균을 같은 비중으로 합산합니다.</p>
+              <p>실측이 3일 이상인 품목의 오차를 표시합니다. {result.trainingCount > 0 && `이 달의 XGBoost 학습 사례는 ${result.trainingCount}건입니다.`}</p>
+              <a className={styles.demoLink} href="/downloads/kamis-grocery-monthly-model.zip" download>6품목 월평균 모델과 학습 데이터 다운로드</a>
+            </div>
+          </section>
         )}
         <footer className={styles.source}>
           출처 <a href={snapshot.sourceUrl}>{snapshot.source}</a> ·{" "}
