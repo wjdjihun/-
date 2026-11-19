@@ -84,7 +84,7 @@ function yearlySeries(product: Product) {
   return { series, data: [...points.values()].sort((left, right) => left.time - right.time) };
 }
 
-export default function AnnualPriceCharts({ products }: { products: Product[] }) {
+export default function AnnualPriceCharts({ products, showJulyForecast = true }: { products: Product[]; showJulyForecast?: boolean }) {
   const [charts] = useState(() => products.map((product) => ({ ...product, ...yearlySeries(product) })));
   const years = [...new Set(charts.flatMap(({ series }) => series.map(({ year }) => year)))].sort();
   const [shownYears, setShownYears] = useState(() => years.slice(-2));
@@ -121,17 +121,17 @@ export default function AnnualPriceCharts({ products }: { products: Product[] })
       </div>
       <div className={styles.chartLegend}>
         <span><i className={styles.gapSwatch} aria-hidden="true" /> 관측 공백의 AI 추정</span>
-        {shownYears.includes(forecastYear) && (
+        {showJulyForecast && shownYears.includes(forecastYear) && (
           <span><i className={styles.forecastSwatch} aria-hidden="true" /> 2026년 7월 AI 예측 · 각 날짜 전후 7일 평균</span>
         )}
       </div>
       <div className={styles.yearlyGrid}>
         {charts.map(({ id, name, variety, unit, series, data }) => {
-          const activeSeries = series.filter(({ year }) => shownYears.includes(year));
+          const activeSeries = series.filter(({ year, kind }) => shownYears.includes(year) && (showJulyForecast || kind !== "outlook"));
           const missingYears = years.filter((year) =>
             shownYears.includes(year) && !activeSeries.some((line) => line.year === year),
           );
-          const showForecast = shownYears.includes(forecastYear);
+          const showForecast = showJulyForecast && shownYears.includes(forecastYear);
           const activeData = data.filter(
             (point) => activeSeries.some(({ key }) => point[key] !== undefined),
           );

@@ -1,4 +1,4 @@
-"""Fit next-calendar-month price models and export the July comparison."""
+"""Fit next-calendar-month price models and export selectable forecasts."""
 
 import json
 import sys
@@ -68,6 +68,50 @@ def run_forecast(frame, target):
     }, len(train)
 
 
+def selectable_forecasts(source, latest_month):
+    monthly = source.groupby(["product_id", source["date"].dt.to_period("M")])["price"].agg(["mean", "count"])
+    product_ids = sorted(source["product_id"].unique())
+    months = {}
+    for target in pd.period_range("2023-01", latest_month + 12, freq="M"):
+        cutoff = min(target.start_time - pd.Timedelta(days=1), source["date"].max())
+        known = source[source["date"] <= cutoff]
+        predictions = {}
+        training_count = 0
+        if target <= latest_month + 1:
+            features = monthly_features(known)
+            if features["target"].eq(target).any():
+                predictions, training_count = run_forecast(features, target)
+
+        products = {}
+        for product in product_ids:
+            actual = monthly.loc[(product, target)] if (product, target) in monthly.index else None
+            historical_means = [
+                (target - 12 * offset, monthly.loc[(product, target - 12 * offset), "mean"])
+                for offset in range(1, 5)
+                if (product, target - 12 * offset) in monthly.index
+                and monthly.loc[(product, target - 12 * offset), "count"] >= 3
+                and (target - 12 * offset).end_time.normalize() <= cutoff
+            ]
+            forecast = predictions.get(product)
+            estimate = forecast["forecast"] if forecast else (
+                round(float(np.mean([value for _, value in historical_means])), 2)
+                if historical_means else None
+            )
+            products[product] = {
+                "estimate": estimate,
+                "method": "xgboost" if forecast else ("seasonal" if estimate is not None else "unavailable"),
+                "seasonalYears": [int(month.year) for month, _ in historical_means] if not forecast else [],
+                "actual": round(float(actual["mean"]), 2) if actual is not None else None,
+                "observations": int(actual["count"]) if actual is not None else 0,
+            }
+        months[str(target)] = {
+            "asOf": str(cutoff.date()),
+            "trainingCount": training_count,
+            "products": products,
+        }
+    return months
+
+
 def main():
     archive_path = root / "frontend/public/downloads/kamis-five-year-model.zip"
     with TemporaryDirectory() as tmp, ZipFile(archive_path) as archive:
@@ -89,6 +133,8 @@ def main():
     }
     output = root / "frontend/lib/kamis-monthly.json"
     output.write_text(json.dumps(result, indent=2) + "\n")
+    selectable = root / "frontend/lib/kamis-selectable-months.json"
+    selectable.write_text(json.dumps(selectable_forecasts(source, target - 1), separators=(",", ":")) + "\n")
 
 
 if __name__ == "__main__":

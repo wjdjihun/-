@@ -404,3 +404,44 @@
   display: inline;
   white-space: normal;
 }
+
+.monthPicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 18px 24px;
+}
+
+.monthPicker h1 {
+  margin: 0 0 4px;
+  font-size: 23px;
+}
+
+.monthPicker p,
+.monthControls label {
+  font-size: 13px;
+  color: #45566d;
+}
+
+.monthControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.monthControls label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.monthControls select {
+  color: #243753;
+  background: #fff;
+  border: 1px solid #c6d0df;
+  border-radius: 7px;
+  padding: 7px 10px;
+}
