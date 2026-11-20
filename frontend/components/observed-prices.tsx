@@ -89,7 +89,6 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
   const pendingCartFocus = useRef<string | null>(null);
   const [ready, setReady] = useState(false);
   const [month, setMonth] = useState("2026-06");
-  const [applyNews, setApplyNews] = useState(true);
   const reference = forecasts[month];
   const result = adaptive[month];
   const title = monthLabel(month);
@@ -106,9 +105,9 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
       ...product,
       ...reference.products[product.id],
       ...base,
-      estimate: applyNews ? adjustPrice(base.estimate, factor) : base.estimate,
+      estimate: adjustPrice(base.estimate, factor),
       baselineValidation: base.validationEstimate,
-      validationEstimate: applyNews ? adjustPrice(base.validationEstimate, validationFactor) : base.validationEstimate,
+      validationEstimate: adjustPrice(base.validationEstimate, validationFactor),
       factor,
       sources: adjustment?.sources ?? [],
       quantity: quantities[product.id] ?? 0,
@@ -217,13 +216,6 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
             <div>
               <h1>월별 식자재 가격 예측</h1>
               <p>{snapshot.market} · {snapshot.grade} 등급 · 모델 학습 {monthLabel(adaptiveForecasts.fitMonth)}까지</p>
-              <label className={styles.newsToggle}>
-                <input type="checkbox" checked={applyNews} onChange={(event) => setApplyNews(event.target.checked)} />
-                뉴스·수급 보정 적용
-              </label>
-              {applyNews && !rows.some(({ factor }) => factor !== 1) && (
-                <p>선택한 달에는 가격에 적용된 뉴스·수급 보정이 없습니다.</p>
-              )}
             </div>
             <div className={styles.monthControls}>
               <label>
@@ -248,7 +240,7 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
                 <a href={tabbed ? "#outlook" : `#price-${id}`} key={id} className={`stat-card ${styles.card}`}>
                   <span className="stat-label">{name} <span>{unit}</span></span>
                   <span className={`stat-value ${styles.cardValue}`}>{priceText(estimate)}</span>
-                  <span className={styles.cardSpec}>{variety} · {methodLabel[method]}{applyNews && factor !== 1 && ` · 뉴스 ${adjustmentText(factor)}`}</span>
+                  <span className={styles.cardSpec}>{variety} · {methodLabel[method]}{factor !== 1 && ` · 뉴스 ${adjustmentText(factor)}`}</span>
                 </a>
               ))}
             </div>
@@ -379,7 +371,7 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
                                 <div>전월 {(previousWeight * 100).toFixed(1)}% · 동월 {((1 - previousWeight) * 100).toFixed(1)}%</div>
                               )}
                               {method === "seasonal" && seasonalYears.length > 0 && ` (${[...seasonalYears].reverse().join("·")}년)`}
-                              {applyNews && factor !== 1 && <div>뉴스 보정 {adjustmentText(factor)}</div>}
+                              {factor !== 1 && <div>뉴스 보정 {adjustmentText(factor)}</div>}
                             </td>
                           <td>{priceText(estimate)}</td>
                           <td>{validationEstimate === null ? "—" : priceText(validationEstimate)}</td>
