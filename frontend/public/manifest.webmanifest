@@ -1,0 +1,17 @@
+{
+  "id": "/demo/",
+  "name": "PriceRadar AI · 물가레이더",
+  "short_name": "물가레이더",
+  "description": "식자재 가격 예측과 장바구니 예산",
+  "lang": "ko",
+  "start_url": "/demo/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7faf8",
+  "theme_color": "#12362d",
+  "icons": [
+    { "src": "/icons/app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
