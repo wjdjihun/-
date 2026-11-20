@@ -8,6 +8,7 @@ import EconomicNews from "./economic-news";
 import snapshot from "@/lib/kamis-grocery-prices.json";
 import monthlyForecasts from "@/lib/kamis-selectable-months.json";
 import adaptiveForecasts from "@/lib/kamis-adaptive-months.json";
+import newsAdjustments from "@/lib/kamis-news-adjustments.json";
 import { percent } from "@/lib/utils";
 import styles from "./observed-prices.module.css";
 
@@ -40,7 +41,14 @@ type AdaptiveMonth = {
   products: Record<string, AdaptiveForecast>;
 };
 
+type NewsAdjustment = {
+  factor: number;
+  validationFactor: number;
+  sources: { date: string; publisher: string; url: string; evidence: string }[];
+};
+
 const adaptive = adaptiveForecasts.months as Record<string, AdaptiveMonth>;
+const adjustments: Record<string, Record<string, NewsAdjustment>> = newsAdjustments.months;
 const availableMonths = Object.keys(adaptive);
 const years = [...new Set(availableMonths.map((month) => month.slice(0, 4)))];
 const products = snapshot.products;
@@ -50,6 +58,8 @@ const validQuantity = (value: unknown): value is number => typeof value === "num
 const currency = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 });
 const priceText = (price: number | null) => price === null ? "자료 부족" : `${currency.format(price)}원`;
 const monthLabel = (month: string) => `${month.slice(0, 4)}년 ${Number(month.slice(5))}월`;
+const adjustPrice = (price: number | null, factor: number) => price === null ? null : Math.round(price * factor * 100) / 100;
+const adjustmentText = (factor: number) => `${factor > 1 ? "+" : "−"}${(Math.abs(factor - 1) * 100).toFixed(2)}%`;
 const methodLabel = {
   adaptive: "가변 가중치",
   previous: "전월 평균",
@@ -79,6 +89,7 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
   const pendingCartFocus = useRef<string | null>(null);
   const [ready, setReady] = useState(false);
   const [month, setMonth] = useState("2026-06");
+  const [applyNews, setApplyNews] = useState(true);
   const reference = forecasts[month];
   const result = adaptive[month];
   const title = monthLabel(month);
@@ -87,11 +98,19 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
   const previousMonth = `${Number(year) - 1}${month.slice(4)}`;
   const rows = products.map((product) => {
     const prior = product.history.filter(({ date }) => date.startsWith(previousMonth));
+    const base = result.products[product.id];
+    const adjustment = adjustments[month]?.[product.id];
+    const factor = adjustment?.factor ?? 1;
+    const validationFactor = adjustment?.validationFactor ?? 1;
     return {
       ...product,
       ...reference.products[product.id],
-      baselineForecast: reference.products[product.id].estimate,
-      ...result.products[product.id],
+      ...base,
+      estimate: applyNews ? adjustPrice(base.estimate, factor) : base.estimate,
+      baselineValidation: base.validationEstimate,
+      validationEstimate: applyNews ? adjustPrice(base.validationEstimate, validationFactor) : base.validationEstimate,
+      factor,
+      sources: adjustment?.sources ?? [],
       quantity: quantities[product.id] ?? 0,
       priorActual: prior.length >= 3 ? prior.reduce((sum, point) => sum + point.price, 0) / prior.length : null,
     };
@@ -198,6 +217,13 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
             <div>
               <h1>월별 식자재 가격 예측</h1>
               <p>{snapshot.market} · {snapshot.grade} 등급 · 모델 학습 {monthLabel(adaptiveForecasts.fitMonth)}까지</p>
+              <label className={styles.newsToggle}>
+                <input type="checkbox" checked={applyNews} onChange={(event) => setApplyNews(event.target.checked)} />
+                뉴스·수급 보정 적용
+              </label>
+              {applyNews && !rows.some(({ factor }) => factor !== 1) && (
+                <p>선택한 달에는 가격에 적용된 뉴스·수급 보정이 없습니다.</p>
+              )}
             </div>
             <div className={styles.monthControls}>
               <label>
@@ -218,11 +244,11 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
         {display("dashboard") && (
           <>
             <div className={styles.cards} aria-label={`${title} 품목별 예상 단가`}>
-              {rows.map(({ id, name, unit, variety, estimate, method }) => (
+              {rows.map(({ id, name, unit, variety, estimate, method, factor }) => (
                 <a href={tabbed ? "#outlook" : `#price-${id}`} key={id} className={`stat-card ${styles.card}`}>
                   <span className="stat-label">{name} <span>{unit}</span></span>
                   <span className={`stat-value ${styles.cardValue}`}>{priceText(estimate)}</span>
-                  <span className={styles.cardSpec}>{variety} · {methodLabel[method]}</span>
+                  <span className={styles.cardSpec}>{variety} · {methodLabel[method]}{applyNews && factor !== 1 && ` · 뉴스 ${adjustmentText(factor)}`}</span>
                 </a>
               ))}
             </div>
@@ -332,17 +358,17 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
             <div className="panel-heading">
               <div>
                 <h2 id="july-validation-title">{title} 서비스 예측과 검증</h2>
-                <p>서비스는 전체 자료로 학습한 모델을 사용합니다. 과거 월의 성능은 해당 월 이전 자료로 학습한 검증용 예측으로 계산합니다.</p>
+                <p>서비스 단가는 전체 자료로 학습했습니다. 검증용 가격은 대상 월 이전의 가격과 직전 달에 발행한 뉴스·수급 자료로 계산합니다.</p>
               </div>
             </div>
             <div className={styles.validationBody}>
               <div className={styles.validationScroll}>
                 <table className={styles.validationTable}>
                   <thead>
-                    <tr><th scope="col">품목</th><th scope="col">서비스 예측 방식</th><th scope="col">서비스 예측</th><th scope="col">검증용 예측</th><th scope="col">실제 평균</th><th scope="col">검증 오차</th><th scope="col">기존 예측 오차</th></tr>
+                    <tr><th scope="col">품목</th><th scope="col">서비스 예측 방식</th><th scope="col">서비스 예측</th><th scope="col">검증용 예측</th><th scope="col">실제 평균</th><th scope="col">검증 오차</th><th scope="col">가격 모델 오차</th></tr>
                   </thead>
                   <tbody>
-                    {rows.map(({ id, name, estimate, method, seasonalYears, actual, observations, previousWeight, baselineForecast, validationEstimate }) => {
+                    {rows.map(({ id, name, estimate, method, seasonalYears, actual, observations, previousWeight, baselineValidation, validationEstimate, factor }) => {
                       const error = validationEstimate !== null && actual !== null && observations >= 3 ? Math.abs(validationEstimate - actual) : null;
                       return (
                         <tr key={id}>
@@ -353,12 +379,13 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
                                 <div>전월 {(previousWeight * 100).toFixed(1)}% · 동월 {((1 - previousWeight) * 100).toFixed(1)}%</div>
                               )}
                               {method === "seasonal" && seasonalYears.length > 0 && ` (${[...seasonalYears].reverse().join("·")}년)`}
+                              {applyNews && factor !== 1 && <div>뉴스 보정 {adjustmentText(factor)}</div>}
                             </td>
                           <td>{priceText(estimate)}</td>
                           <td>{validationEstimate === null ? "—" : priceText(validationEstimate)}</td>
                           <td>{actual === null ? "실측 자료 없음" : `${priceText(actual)} (${observations}일)`}</td>
                           <td>{error === null || actual === null ? "—" : `${priceText(error)} (${(100 * error / actual).toFixed(2)}%)`}</td>
-                          <td>{baselineForecast === null || actual === null || observations < 3 ? "—" : `${(100 * Math.abs(baselineForecast - actual) / actual).toFixed(2)}%`}</td>
+                          <td>{baselineValidation === null || actual === null || observations < 3 ? "—" : `${(100 * Math.abs(baselineValidation - actual) / actual).toFixed(2)}%`}</td>
                         </tr>
                       );
                     })}
@@ -367,8 +394,23 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
               </div>
               <p>최근 가격 변동과 전월·과거 동월 가격 차이를 보고 가중치를 계산합니다. 기준 가격 하나가 부족하면 확보한 평균을 사용합니다.</p>
               <p>서비스 모델은 {monthLabel(adaptiveForecasts.fitMonth)}까지의 유효 사례 {adaptiveForecasts.trainingCount}건으로 학습했습니다.</p>
+              <p>뉴스·수급 모델은 {monthLabel(newsAdjustments.calibrationStart)}부터 {monthLabel(newsAdjustments.calibrationEnd)}까지의 가격 비교 {newsAdjustments.calibrationCases}건, 기사·보도자료 {newsAdjustments.newsSources}건, 월별 수급 관측보 {newsAdjustments.reportSources}건을 사용했습니다.</p>
+              <p>2026년 1~6월 평균 절대오차율은 가격 모델 {newsAdjustments.holdout.baselineError.mape.toFixed(2)}%, 뉴스·수급 보정 {newsAdjustments.holdout.newsError.mape.toFixed(2)}%였습니다. 6월은 가격 모델 {newsAdjustments.validationByMonth["2026-06"].baselineError.mape.toFixed(2)}%, 뉴스·수급 보정 {newsAdjustments.validationByMonth["2026-06"].newsError.mape.toFixed(2)}%였습니다.</p>
               {result.validationFitMonth && (
-                <p>검증 모델은 {reference.asOf}까지의 유효 사례 {result.validationTrainingCount}건으로 학습했습니다. 실측이 3일 이상인 품목의 검증 오차를 표시합니다.</p>
+                <p>검증용 가격 모델은 {monthLabel(result.validationFitMonth)}까지의 유효 사례 {result.validationTrainingCount}건으로 학습했습니다. 실측이 3일 이상인 품목의 검증 오차를 표시합니다.</p>
+              )}
+              {rows.some(({ sources }) => sources.length) && (
+                <details className={styles.newsSources}>
+                  <summary>선택한 달의 뉴스·수급 근거</summary>
+                  {rows.filter(({ sources }) => sources.length).map(({ id, name, sources }) => (
+                    <div key={id}>
+                      <strong>{name}</strong>
+                      <ul>{sources.map(({ date, publisher, url, evidence }) => (
+                        <li key={url}><a href={url} target="_blank" rel="noreferrer">{date} {publisher}</a> · {evidence}</li>
+                      ))}</ul>
+                    </div>
+                  ))}
+                </details>
               )}
               <a className={styles.demoLink} href="/downloads/kamis-adaptive-model.zip" download>가변 가중치 모델과 검증 자료 다운로드</a>
             </div>

@@ -1,0 +1,43 @@
+published,publisher,product,event,direction,url,evidence
+2021-07-05,농민신문,garlic,output,1,https://www.nongmin.com/article/20210702340985,재배면적 감소로 해당 연도 마늘 생산량이 줄어듦
+2021-07-30,농민신문,zucchini,demand,-1,https://www.nongmin.com/article/20210729342372,외식과 급식 수요가 위축되어 애호박 산지 폐기 진행
+2022-02-11,농민신문,onion,inventory,-1,https://www.nongmin.com/article/20220209350975,저장 양파 재고가 전년보다 많은 상황에서 소비도 부진
+2022-03-02,농림축산식품부,onion,output,1,https://www.mafra.go.kr/bbs/mafra/68/329781/artclView.do,중만생종 양파 생산이 전년보다 줄어들 것으로 전망
+2022-07-29,농림축산식품부,garlic,output,1,https://www.mafra.go.kr/bbs/mafra/69/330832/artclView.do,국내 마늘 생산량 감소로 할당관세 수입 추진 발표
+2022-08-05,농민신문,zucchini,weather,1,https://www.nongmin.com/article/20220803360476,재배면적 축소와 장마로 애호박 생산량 감소
+2023-05-15,농림축산식품부,onion,imports,-1,https://www.korea.kr/news/policyNewsView.do?newsId=148915064,양파 수급 안정을 위한 수입 물량 공급
+2023-07-10,농민신문,zucchini,output,1,https://www.nongmin.com/article/20230710500621,산지가 바뀌는 시기에 출하 공백이 지속됨
+2023-10-24,농민신문,green-onion,imports,0,https://www.nongmin.com/article/20231023500602,수입 추진 움직임 보도 당시 실제 유통 규모와 시점은 미확정
+2024-04-09,뉴시스,cucumber,output,-1,https://www.newsis.com/view/NISX20240409_0002693054,기상 개선과 함께 산지 출하량 증가
+2024-04-09,뉴시스,zucchini,output,-1,https://www.newsis.com/view/NISX20240409_0002693054,기상 개선과 함께 산지 출하량 증가
+2024-08-30,농민신문,garlic,inventory,-1,https://www.nongmin.com/article/20240828500619,추석을 앞두고 정부 비축 마늘을 시장에 공급할 계획
+2024-10-15,농림축산식품부,cucumber,weather,0,https://www.mafra.go.kr/bbs/home/792/571896/artclView.do,기상 영향으로 출하가 부진했으나 이후 생육과 출하 회복을 전망
+2024-10-15,농림축산식품부,zucchini,weather,0,https://www.mafra.go.kr/bbs/home/792/571896/artclView.do,기상 영향으로 출하가 부진했으나 이후 생육과 출하 회복을 전망
+2024-12-10,농민신문,green-onion,output,-1,https://www.nongmin.com/article/20241209500645,산지별 편차에도 12월 전국 출하량이 전년보다 10% 늘어날 것으로 전망
+2025-02-25,농민신문,green-onion,demand,-1,https://www.nongmin.com/article/20250224500669,외식 수요가 위축됐고 3월을 앞두고 출하 대기 물량이 많음
+2025-04-16,농민신문,green-onion,demand,-1,https://www.nongmin.com/article/20250414500809,대파 시장 수요가 부진하고 4월 예상 출하량은 전년보다 6.4% 늘어남
+2025-04-24,농림축산식품부,garlic,inventory,1,https://www.korea.kr/news/policyNewsView.do?newsId=148942378,전년산 생산 감소로 4월 저장 재고가 전년보다 3.7% 줄어듦
+2025-05-28,농림축산식품부,garlic,output,-1,https://www.korea.kr/news/policyNewsView.do?newsId=148943766,햇마늘 생산량 증가 전망과 6월 상순 조기 공급 계획
+2025-05-28,농림축산식품부,onion,output,-1,https://www.korea.kr/news/policyNewsView.do?newsId=148943766,중만생종 양파 생산량 증가 및 초과 공급 전망
+2025-06-10,농민신문,onion,output,-1,https://www.nongmin.com/article/20250609500671,중만생종 생산량이 전년보다 3.2% 늘어날 것으로 전망
+2025-06-12,농림축산식품부,garlic,inventory,0,https://www.korea.kr/news/policyNewsView.do?newsId=148950286,저장 마늘 재고 감소와 햇마늘 생산량 증가 전망이 함께 보도됨
+2025-07-04,농민신문,enoki,demand,-1,https://www.nongmin.com/article/20250702500586,외식 수요와 도매 경유 수요가 위축됐고 학교급식 재개 전까지 약세 전망
+2025-07-21,농민신문,green-onion,weather,1,https://www.nongmin.com/article/20250721500826,집중호우로 대파 재배지 83헥타르 침수 피해 집계
+2025-07-28,농민신문,cucumber,output,-1,https://www.nongmin.com/article/20250725500670,8월 주산지인 강원의 침수 피해가 제한적이며 출하가 전년보다 늘어남
+2025-08-14,농민신문,cucumber,output,-1,https://www.nongmin.com/article/20250814500088,강원 일조시간 증가에 따른 오이 출하 확대 전망
+2025-08-14,농민신문,zucchini,output,-1,https://www.nongmin.com/article/20250814500088,강원 일조시간 증가에 따른 애호박 출하 확대 전망
+2025-09-05,농민신문,green-onion,output,-1,https://www.nongmin.com/article/20250903500723,재배면적 확대로 9월 대파 출하량이 전년보다 3.8% 늘어날 것으로 전망
+2025-11-17,농민신문,onion,imports,-1,https://www.nongmin.com/article/20251114500704,양파 수입이 늘고 품위 저하로 국산 수요가 감소
+2025-11-18,농민신문,green-onion,weather,1,https://www.nongmin.com/article/20251117500759,전남산 대파 출하 지연으로 12월 중순까지 공급 압박 전망
+2025-12-26,농민신문,green-onion,output,-1,https://www.nongmin.com/article/20251224500563,겨울대파 재배면적 증가와 생육 회복으로 출하물량이 증가
+2026-01-13,농림축산식품부,garlic,inventory,1,https://www.korea.kr/news/policyNewsView.do?newsId=148957910,저장 피마늘 품질이 떨어져 상품 공급에 압박 발생
+2026-02-04,농림축산식품부,onion,inventory,-1,https://www.mafra.go.kr/bbs/home/792/576795/artclView.do,저장 양파 재고가 전년보다 늘고 수요가 줄어 수급관리 발표
+2026-03-13,농민신문,cucumber,output,-1,https://www.nongmin.com/article/20260313500240,3월 말 충청권 오이 출하 본격화 전망
+2026-03-19,농민신문,onion,output,-1,https://www.nongmin.com/article/20260318500667,저장 양파 소진이 지연된 가운데 제주 햇양파 출하 임박
+2026-04-03,농민신문,zucchini,output,-1,https://www.nongmin.com/article/20260401500804,작황 호조와 재배면적 확대 속에 청주산 출하 시작
+2026-04-10,농림축산식품부,cucumber,output,-1,https://www.mafra.go.kr/bbs/home/792/577574/artclView.do,작황 호조로 주요 과채류 출하가 증가
+2026-04-22,농민신문,green-onion,output,-1,https://www.nongmin.com/article/20260420500694,겨울대파 출하가 늘고 봄대파의 산지 확대도 전망
+2026-05-25,농민신문,zucchini,input-cost,0,https://www.nongmin.com/article/20260522500307,포장용 비닐 공급이 줄고 가격은 상승했으나 소매가 전가 방향은 불확실
+2026-05-27,농림축산식품부,green-onion,output,-1,https://www.mafra.go.kr/bbs/home/793/597621/download.do,봄대파 작형 전환기에 생육이 회복되어 6월 출하 증가 전망
+2026-06-08,농림축산식품부,cucumber,output,-1,https://mafra.go.kr/bbs/home/792/578123/artclView.do,오이 재배면적이 전년보다 4.1% 증가했고 시설채소 공급이 안정적일 것으로 전망
+2026-06-08,농림축산식품부,green-onion,output,-1,https://mafra.go.kr/bbs/home/792/578123/artclView.do,5월 생육 부진에서 벗어나 대파 작황이 회복되는 추세
