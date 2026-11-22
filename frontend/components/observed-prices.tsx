@@ -70,10 +70,22 @@ const methodLabel = {
 const tabs = [
   { id: "dashboard", label: "대시보드", icon: Activity },
   { id: "basket", label: "내 장바구니", icon: ShoppingBasket },
-  { id: "news", label: "경제뉴스", icon: Newspaper },
+  { id: "news", label: "최신 경제뉴스", icon: Newspaper },
   { id: "outlook", label: "물가 전망", icon: TrendingUp },
   { id: "model", label: "AI 모델 분석", icon: Layers3 },
 ] as const;
+
+function NewsSourceList({ sources }: { sources: NewsAdjustment["sources"] }) {
+  return (
+    <ul>
+      {sources.map(({ date, publisher, url, evidence }) => (
+        <li key={url}>
+          <a href={url} target="_blank" rel="noreferrer">{date} {publisher}</a> · {evidence}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function yearOverYear(current: number, previous: number) {
   const change = current - previous;
@@ -88,7 +100,7 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
   const [quantities, setQuantities] = useState(initialQuantities);
   const pendingCartFocus = useRef<string | null>(null);
   const [ready, setReady] = useState(false);
-  const [month, setMonth] = useState("2026-06");
+  const [month, setMonth] = useState("2026-07");
   const reference = forecasts[month];
   const result = adaptive[month];
   const title = monthLabel(month);
@@ -106,6 +118,7 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
       ...reference.products[product.id],
       ...base,
       estimate: adjustPrice(base.estimate, factor),
+      baselineEstimate: base.estimate,
       baselineValidation: base.validationEstimate,
       validationEstimate: adjustPrice(base.validationEstimate, validationFactor),
       factor,
@@ -235,15 +248,6 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
         )}
         {display("dashboard") && (
           <>
-            <div className={styles.cards} aria-label={`${title} 품목별 예상 단가`}>
-              {rows.map(({ id, name, unit, variety, estimate, method, factor }) => (
-                <a href={tabbed ? "#outlook" : `#price-${id}`} key={id} className={`stat-card ${styles.card}`}>
-                  <span className="stat-label">{name} <span>{unit}</span></span>
-                  <span className={`stat-value ${styles.cardValue}`}>{priceText(estimate)}</span>
-                  <span className={styles.cardSpec}>{variety} · {methodLabel[method]}{factor !== 1 && ` · 뉴스 ${adjustmentText(factor)}`}</span>
-                </a>
-              ))}
-            </div>
             {tabbed && (
               <section className={`panel ${styles.dashboardBasket}`} aria-label="예상 식자재비">
                 <div>
@@ -253,9 +257,29 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
                     ? `${unpriced.map(({ name }) => name).join("·")} 단가 자료 부족`
                     : `같은 구매량으로 작년 대비 ${priorTotal === null ? "비교 자료 부족" : yearOverYear(forecastTotal, priorTotal)}`}</p>
                 </div>
-                <a className={styles.serviceAction} href="#basket">월 구매량 입력 <ArrowUpRight size={16} aria-hidden="true" /></a>
+                <a className={styles.serviceAction} href="#basket">내 장바구니에서 수량 바꾸기</a>
               </section>
             )}
+            <div className={styles.cards} aria-label={`${title} 품목별 예상 단가`}>
+              {rows.map(({ id, name, unit, variety, estimate, baselineEstimate, method, factor, sources }) => (
+                <article key={id} className={`stat-card ${styles.card}`}>
+                  <a className={`stat-label ${styles.cardTitle}`} href={tabbed ? "#outlook" : `#price-${id}`}>
+                    {name} <span>{unit}</span>
+                  </a>
+                  <span className={`stat-value ${styles.cardValue}`}>{priceText(estimate)}</span>
+                  <span className={styles.cardSpec}>{variety} · {methodLabel[method]}</span>
+                  {factor !== 1 && baselineEstimate !== null && (
+                    <div className={styles.cardAdjustment}>
+                      <p>보정 전 {priceText(baselineEstimate)} · 뉴스 {adjustmentText(factor)}</p>
+                      <details className={styles.newsSources}>
+                        <summary>{name} 예측에 반영한 뉴스</summary>
+                        <NewsSourceList sources={sources} />
+                      </details>
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
           </>
         )}
         {display("basket") && (
@@ -397,9 +421,7 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
                   {rows.filter(({ sources }) => sources.length).map(({ id, name, sources }) => (
                     <div key={id}>
                       <strong>{name}</strong>
-                      <ul>{sources.map(({ date, publisher, url, evidence }) => (
-                        <li key={url}><a href={url} target="_blank" rel="noreferrer">{date} {publisher}</a> · {evidence}</li>
-                      ))}</ul>
+                      <NewsSourceList sources={sources} />
                     </div>
                   ))}
                 </details>

@@ -83,7 +83,7 @@ export default function EconomicNews() {
       <div className={`panel-heading ${styles.newsHeading}`}>
         <div>
           <h2 id="latest-news-title">최신 경제뉴스</h2>
-          <p>뉴시스 경제 RSS · 이 탭에서 5분마다 확인합니다.</p>
+          <p>뉴시스 경제 RSS · 5분마다 확인합니다. 예측에 반영한 기사는 대시보드에서 볼 수 있습니다.</p>
         </div>
         <button type="button" className={styles.yearButton} disabled={loading} onClick={() => setRefresh((count) => count + 1)}>
           <RefreshCw size={14} aria-hidden="true" /> 새로고침

@@ -32,40 +32,51 @@ const yearColors: Record<string, string> = {
   "2026": "#803ac1",
 };
 const forecastColor = "#bd5f18";
-const comparisonDate = (date: string) => Date.parse(`2000${date.slice(4)}T00:00:00Z`);
-const months = [0, 2, 4, 6, 8, 10].map((month) => Date.UTC(2000, month, 1));
-const maxGap = 14 * 86_400_000;
+const months = Array.from({ length: 12 }, (_, index) => index + 1);
+const ticks = months.filter((month) => month % 2 === 1);
 
 function yearlySeries(product: Product) {
-  const points = new Map<number, Record<string, number>>();
-  const series: { key: string; year: string; count: number }[] = [];
-  let previous = -Infinity;
-  let currentYear = "";
-  let key = "";
-
+  const totals = new Map<string, { sum: number; count: number }>();
   for (const { date, price } of product.history) {
-    const year = date.slice(0, 4);
-    const time = comparisonDate(date);
-
-    // Keep holidays within a line and break it across longer gaps in observations.
-    if (year !== currentYear || time - previous > maxGap) {
-      key = `observed-${series.length}`;
-      series.push({ key, year, count: 0 });
-      currentYear = year;
-    }
-    series[series.length - 1].count += 1;
-    previous = time;
-    points.set(time, { ...points.get(time), time, [key]: price });
+    const key = date.slice(0, 7);
+    const total = totals.get(key) ?? { sum: 0, count: 0 };
+    total.sum += price;
+    total.count += 1;
+    totals.set(key, total);
   }
 
-  return { series, data: [...points.values()].sort((left, right) => left.time - right.time) };
+  const years = [...new Set([...totals.keys()].map((key) => key.slice(0, 4)))].sort();
+  const data: Record<string, number>[] = months.map((month) => ({ month }));
+  const series: { key: string; year: string; gap: boolean }[] = [];
+
+  for (const year of years) {
+    let previous: { month: number; value: number } | undefined;
+    for (const month of months) {
+      const total = totals.get(`${year}-${String(month).padStart(2, "0")}`);
+      if (!total || total.count < 3) continue;
+      const value = total.sum / total.count;
+      const point = data[month - 1];
+      if (!previous) series.push({ key: year, year, gap: false });
+      point[year] = value;
+
+      if (previous && month - previous.month > 1) {
+        // Draw only between measured endpoints. Missing months have no value.
+        const key = `${year}-gap-${month}`;
+        data[previous.month - 1][key] = previous.value;
+        point[key] = value;
+        series.push({ key, year, gap: true });
+      }
+      previous = { month, value };
+    }
+  }
+  return { series, data };
 }
 
 export default function AnnualPriceCharts({ products, forecastMonth }: { products: Product[]; forecastMonth: string }) {
   const [charts] = useState(() => products.map((product) => ({ id: product.id, ...yearlySeries(product) })));
   const years = [...new Set(charts.flatMap(({ series }) => series.map(({ year }) => year)))].sort();
   const [shownYears, setShownYears] = useState(() => years.slice(-2));
-  const forecastTime = comparisonDate(`${forecastMonth}-15`);
+  const forecastIndex = Number(forecastMonth.slice(5));
 
   function toggleYear(year: string) {
     setShownYears((shown) => {
@@ -79,7 +90,7 @@ export default function AnnualPriceCharts({ products, forecastMonth }: { product
       <div className={styles.yearlyHeader}>
         <div>
           <h2 id="yearly-title">생필품 연도별 가격 추이</h2>
-          <p>2026년 6월 30일을 기준으로 과거 같은 월·일의 소매가격을 비교합니다.</p>
+          <p>같은 달의 평균 소매가격을 연도별로 비교합니다.</p>
         </div>
         <div className={styles.yearControls} role="group" aria-label="그래프에 표시할 연도">
           {years.map((year) => (
@@ -98,15 +109,14 @@ export default function AnnualPriceCharts({ products, forecastMonth }: { product
         </div>
       </div>
       <div className={styles.chartLegend}>
-        <span><i className={styles.forecastSwatch} aria-hidden="true" /> {forecastMonth} 예상 월평균 · 주황색 점</span>
+        <span><i className={styles.gapSwatch} aria-hidden="true" /> 점선 · 실측 자료가 부족한 달</span>
+        <span><i className={styles.forecastSwatch} aria-hidden="true" /> {forecastMonth} 예상 월평균</span>
       </div>
       <div className={styles.yearlyGrid}>
         {charts.map(({ id, series, data }) => {
           const { name, unit, variety, estimate } = products.find((product) => product.id === id)!;
           const activeSeries = series.filter(({ year }) => shownYears.includes(year));
-          const activeData = data.filter(
-            (point) => activeSeries.some(({ key }) => point[key] !== undefined),
-          );
+          const hasPrice = activeSeries.length > 0 || estimate !== null;
           return (
             <section key={id} id={`price-${id}`} className={`panel ${styles.yearlyCard}`} aria-labelledby={`price-title-${id}`}>
               <div className="panel-heading">
@@ -116,19 +126,19 @@ export default function AnnualPriceCharts({ products, forecastMonth }: { product
                 </div>
               </div>
               <div className={styles.chart}>
-                {activeData.length === 0 ? (
+                {!hasPrice ? (
                   <p className={styles.emptyChart}>선택한 연도의 관측 가격이 없습니다.</p>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                    <LineChart data={activeData} margin={{ top: 12, right: 15, left: 0, bottom: 6 }}>
+                    <LineChart data={data} margin={{ top: 12, right: 15, left: 0, bottom: 6 }}>
                       <CartesianGrid vertical={false} stroke="#e9edf4" strokeDasharray="3 4" />
                       <XAxis
-                        dataKey="time"
+                        dataKey="month"
                         type="number"
-                        domain={[Date.UTC(2000, 0, 1), Date.UTC(2000, 11, 31)]}
-                        ticks={months}
+                        domain={[1, 12]}
+                        ticks={ticks}
                         interval={0}
-                        tickFormatter={(time) => `${new Date(time).getUTCMonth() + 1}월`}
+                        tickFormatter={(month) => `${month}월`}
                         axisLine={false}
                         tickLine={false}
                         tick={{ fontSize: 11, fill: "#66768a" }}
@@ -142,13 +152,10 @@ export default function AnnualPriceCharts({ products, forecastMonth }: { product
                         tick={{ fontSize: 11, fill: "#66768a" }}
                       />
                       <Tooltip
-                        labelFormatter={(time) => {
-                          const date = new Date(Number(time));
-                          return `${date.getUTCMonth() + 1}월 ${date.getUTCDate()}일`;
-                        }}
+                        labelFormatter={(month) => `${month}월 평균`}
                         formatter={(value, label) => [`${won(Number(value))}원 / ${unit}`, label]}
                       />
-                      {activeSeries.map(({ key, year, count }) => (
+                      {activeSeries.map(({ key, year, gap }) => (
                         <Line
                           key={key}
                           dataKey={key}
@@ -156,14 +163,17 @@ export default function AnnualPriceCharts({ products, forecastMonth }: { product
                           name={`${year}년 관측`}
                           stroke={yearColors[year]}
                           strokeWidth={2.25}
-                          connectNulls
-                          dot={count === 1}
+                          connectNulls={gap}
+                          strokeDasharray={gap ? "4 5" : undefined}
+                          strokeOpacity={gap ? 0.65 : 1}
+                          tooltipType={gap ? "none" : undefined}
+                          dot={gap ? false : { r: 2.5 }}
                           isAnimationActive={false}
                         />
                       ))}
                       {estimate !== null && (
                         <ReferenceDot
-                          x={forecastTime}
+                          x={forecastIndex}
                           y={estimate}
                           ifOverflow="extendDomain"
                           r={4.5}
@@ -179,7 +189,7 @@ export default function AnnualPriceCharts({ products, forecastMonth }: { product
           );
         })}
       </div>
-      <p className={styles.yearlyNote}>2025년 9월처럼 조사 자료가 없는 구간은 공백으로 표시합니다.</p>
+      <p className={styles.yearlyNote}>월평균은 관측일이 3일 이상인 달만 표시합니다. 점선은 앞뒤 관측값을 연결하며, 실제 가격이 없는 달의 값은 표시하지 않습니다.</p>
     </section>
   );
 }
