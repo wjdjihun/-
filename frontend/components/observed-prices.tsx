@@ -70,6 +70,9 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
     .slice(0, 7);
   const rows = products.map((product) => {
     const prior = product.history.filter(({ date }) => date.startsWith(previousMonth));
+    const priorActual = prior.length >= 3 ? prior.reduce((sum, point) => sum + point.price, 0) / prior.length : null;
+    const priorForecast = adaptive[previousMonth]?.products[product.id]?.estimate ?? null;
+    const priorFactor = adjustments[previousMonth]?.[product.id]?.factor ?? 1;
     const base = result.products[product.id];
     const adjustment = adjustments[month]?.[product.id];
     const factor = adjustment?.factor ?? 1;
@@ -78,15 +81,19 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
       estimate: adjustPrice(base.estimate, factor),
       sources: factor !== 1 ? adjustment?.sources ?? [] : [],
       quantity: quantities[product.id] ?? 0,
-      priorActual: prior.length >= 3 ? prior.reduce((sum, point) => sum + point.price, 0) / prior.length : null,
+      priorPrice: priorActual ?? adjustPrice(priorForecast, priorFactor),
+      priorSource: priorActual !== null ? "실측" : "예측",
     };
   });
   const basketRows = rows.filter(({ quantity }) => quantity > 0);
   const unpriced = basketRows.filter(({ estimate, quantity }) => estimate === null && quantity > 0);
   const forecastTotal = rows.reduce((sum, { estimate, quantity }) => sum + (estimate ?? 0) * quantity, 0);
-  const priorTotal = rows.some(({ priorActual, quantity }) => priorActual === null && quantity > 0)
+  const priorTotal = basketRows.some(({ priorPrice }) => priorPrice === null)
     ? null
-    : rows.reduce((sum, { priorActual, quantity }) => sum + (priorActual ?? 0) * quantity, 0);
+    : basketRows.reduce((sum, { priorPrice, quantity }) => sum + (priorPrice ?? 0) * quantity, 0);
+  const priorSources = new Set(basketRows.map(({ priorSource }) => priorSource));
+  const priorBasis = priorSources.size === 2 ? "실측·예측" : priorSources.values().next().value;
+  const previousTitle = monthLabel(previousMonth);
 
   function updateYear(nextYear: string) {
     const matchingMonth = `${nextYear}${month.slice(4)}`;
@@ -209,9 +216,11 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
                   <strong aria-live="polite">{priceText(forecastTotal)}</strong>
                   <p>{unpriced.length
                     ? `${unpriced.map(({ name }) => name).join("·")} 단가 자료 부족`
-                    : priorTotal === null
-                      ? `${monthLabel(previousMonth)} 실측 자료 부족`
-                      : `같은 품목·수량 · ${monthLabel(previousMonth)} 실측 ${priceText(priorTotal)} 대비 ${priceChange(forecastTotal, priorTotal)}`}</p>
+                    : basketRows.length === 0
+                      ? "장바구니에 식자재를 담으면 전월과 비교할 수 있습니다."
+                      : priorTotal === null
+                        ? `${previousTitle} 비교 자료 부족`
+                        : `같은 품목·수량 · ${previousTitle} ${priorBasis} ${priceText(priorTotal)} 대비 ${priceChange(forecastTotal, priorTotal)}`}</p>
                 </div>
                 <a
                   className={styles.serviceAction}
@@ -250,7 +259,7 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
             <div className="panel-heading">
               <div>
                 <h2 id="basket-title" tabIndex={-1}><ShoppingBasket size={17} /> {title} 장바구니</h2>
-                <p>같은 품목과 수량으로 전월 실측 가격과 선택한 달의 예상 가격을 비교합니다.</p>
+                <p>같은 품목과 수량으로 전월 가격과 비교합니다. 전월 실측값이 없으면 전월 예측값을 사용합니다.</p>
               </div>
             </div>
             <div className={styles.basket}>
@@ -273,14 +282,14 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
                 <div className={styles.validationScroll}>
                   <table className={styles.validationTable} aria-label="장바구니 품목별 예상 단가와 전월 대비 증감">
                     <thead>
-                      <tr><th scope="col">품목</th><th scope="col">{monthLabel(previousMonth)} 실제</th><th scope="col">{title} 예상</th><th scope="col">전월 대비</th></tr>
+                      <tr><th scope="col">품목</th><th scope="col">{previousTitle} 기준</th><th scope="col">{title} 예상</th><th scope="col">전월 대비</th></tr>
                     </thead>
                     <tbody>
-                      {basketRows.map(({ id, name, unit, priorActual, estimate }) => (
+                      {basketRows.map(({ id, name, unit, priorPrice, priorSource, estimate }) => (
                         <tr key={id}>
                           <th scope="row">{name} · {unit}</th>
-                          <td>{priceText(priorActual)}</td><td>{priceText(estimate)}</td>
-                          <td>{estimate !== null && priorActual !== null ? priceChange(estimate, priorActual) : "—"}</td>
+                          <td>{priceText(priorPrice)}{priorPrice !== null && ` (${priorSource})`}</td><td>{priceText(estimate)}</td>
+                          <td>{estimate !== null && priorPrice !== null ? priceChange(estimate, priorPrice) : "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -315,17 +324,19 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
                   </button>
                 </div>
               ))}
-              <div className={styles.total} aria-live="polite">
-                <span>{monthLabel(previousMonth)} 실측 단가 기준</span><strong>{priceText(priorTotal)}</strong>
-              </div>
+              {basketRows.length > 0 && (
+                <div className={styles.total} aria-live="polite">
+                  <span>{previousTitle} {priorTotal === null ? "기준" : `${priorBasis} 단가 기준`}</span><strong>{priceText(priorTotal)}</strong>
+                </div>
+              )}
               <div className={`${styles.total} ${styles.forecastPrice}`} aria-live="polite">
                 <span>{title} {unpriced.length ? "단가 확인 품목 소계" : "예상 식자재비"}</span><strong>{priceText(forecastTotal)}</strong>
               </div>
               {unpriced.length > 0 ? (
                 <p className={styles.forecastNote} aria-live="polite">{unpriced.map(({ name }) => name).join("·")}의 단가 자료가 없어 소계에서 제외했습니다.</p>
-              ) : (
+              ) : basketRows.length > 0 && (
                 <p className={styles.forecastNote} aria-live="polite">
-                  {priorTotal === null ? "전월 실측 자료가 부족해 합계를 비교할 수 없습니다." : `같은 품목·수량 기준 전월 대비 ${priceChange(forecastTotal, priorTotal)}`}
+                  {priorTotal === null ? "전월 실측과 예측 자료가 모두 부족해 합계를 비교할 수 없습니다." : `같은 품목·수량 기준 전월 대비 ${priceChange(forecastTotal, priorTotal)}`}
                 </p>
               )}
             </div>
