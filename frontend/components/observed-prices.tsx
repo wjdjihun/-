@@ -128,7 +128,7 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
     if (target === null) return;
     pendingCartFocus.current = null;
     document.getElementById(target)?.focus();
-  }, [quantities]);
+  }, [quantities, tab]);
 
   useEffect(() => {
     if (!tabbed) return;
@@ -209,7 +209,17 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
                     ? `${unpriced.map(({ name }) => name).join("·")} 단가 자료 부족`
                     : `같은 구매량으로 작년 대비 ${priorTotal === null ? "비교 자료 부족" : yearOverYear(forecastTotal, priorTotal)}`}</p>
                 </div>
-                <a className={styles.serviceAction} href="#basket">내 장바구니에서 수량 바꾸기</a>
+                <a
+                  className={styles.serviceAction}
+                  href="#basket"
+                  onClick={(event) => {
+                    if (!event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+                      pendingCartFocus.current = "basket-title";
+                    }
+                  }}
+                >
+                  내 장바구니에서 수량 바꾸기
+                </a>
               </section>
             )}
             <div className={styles.cards} aria-label={`${title} 품목별 예상 단가`}>
@@ -235,7 +245,7 @@ export default function ObservedPrices({ tabbed = false }: { tabbed?: boolean })
           <section className="panel" id="july-basket" aria-labelledby="basket-title">
             <div className="panel-heading">
               <div>
-                <h2 id="basket-title"><ShoppingBasket size={17} /> {title} 장바구니</h2>
+                <h2 id="basket-title" tabIndex={-1}><ShoppingBasket size={17} /> {title} 장바구니</h2>
                 <p>한 달에 살 수량을 입력하면 작년 같은 달과 같은 수량 기준으로 비교합니다.</p>
               </div>
             </div>
