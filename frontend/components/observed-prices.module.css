@@ -188,16 +188,6 @@
   }
 }
 
-.validation {
-  margin-top: 22px;
-}
-
-.validationBody {
-  padding: 15px 24px 20px;
-  font-size: 13px;
-  line-height: 1.65;
-}
-
 .validationScroll {
   overflow-x: auto;
 }
@@ -218,10 +208,6 @@
 
 .validationTable th:first-child {
   text-align: left;
-}
-
-.validationBody .chartNote {
-  margin: 0;
 }
 
 .forecastPrice {
@@ -535,7 +521,7 @@
   text-decoration: underline;
 }
 
-.cardAdjustment {
+.cardEvidence {
   margin-top: 11px;
   padding-top: 10px;
   border-top: 1px solid #e2eaf3;
@@ -543,11 +529,7 @@
   color: #45566d;
 }
 
-.cardAdjustment p {
-  margin: 0 0 5px;
-}
-
-.cardAdjustment summary {
+.cardEvidence summary {
   color: var(--blue);
   width: fit-content;
 }
